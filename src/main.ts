@@ -13,6 +13,8 @@ interface Cursor {
   lastSent: string
 }
 
+// TODO: abstract this into a class that gets initialized
+
 const self = nanoid()
 const room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`
 const doc: Y.Doc = new Y.Doc()
@@ -49,6 +51,9 @@ setInterval(() => {
   state.set(self, me)
 }, 80)
 
+// TODO: observe state and update clientSideState as appropriate
+// force update of all clients we track
+// remove old, add new, update existing
 const clientSideState: Record<string, Cursor> = {}
 
 function initializeCursor(c: Cursor) {
@@ -85,5 +90,5 @@ function initializeCursor(c: Cursor) {
 }
 
 function updateCursor(c: Cursor) {
-
+  // TODO: follow https://github.com/steveruizok/perfect-cursors
 }
