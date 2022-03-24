@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cursor Chat Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="cursor-chat-layer">
+    </div>
+    <div id="app">
+      <h1>Cursor Chat</h1>
+      <p>A small library by <a href="https://twitter.com/_jzhao">@_jzhao</a> for digital co-existing + presence :)</p>
+      <p><a href="https://github.com/jackyzha0/cursor-chat">View Source</a></p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+  <style>
+  #app {
+    font-family: Inter, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    position: absolute; 
+    left: 0; 
+    right: 0; 
+    margin: 35vh auto;
+    height: 30vh;
+    width: 30vw;
+  }
+  </style>
+</html>
