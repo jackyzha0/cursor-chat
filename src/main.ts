@@ -88,6 +88,8 @@ class CursorChat {
       this.others.forEach((concrete) => {
         if (concrete.nStale >= 40) {
           concrete.el?.remove()
+          document.getElementById(`cursor_${concrete.id}`)?.remove()
+          concrete.pc?.dispose()
           this.others.delete(concrete.id)
         } else {
           concrete.nStale++
@@ -111,21 +113,17 @@ class CursorChat {
             concrete.nStale = 0
             concrete.el?.classList.remove("stale")
 
-            console.log(`${cursor.id} => (${cursor.x}, ${cursor.y})`)
             concrete.pc?.addPoint([cursor.x, cursor.y])
             const updatedConcrete = {
               ...concrete,
               ...cursor,
+              pc: concrete.pc,
             }
             concrete.el?.classList.remove("new")
             this.others.set(cursor.id, updatedConcrete)
           } else {
             // new cursor, register and add to dom
-            const concrete = initializeCursor(cursor)
-            if (concrete.el) {
-              concrete.el.classList.add("new")
-              this.cursorLayerDiv.appendChild(concrete.el)
-            }
+            const concrete = initializeCursor(cursor, this.cursorLayerDiv)
             this.others.set(cursor.id, concrete)
           }
         }
@@ -134,7 +132,7 @@ class CursorChat {
   }
 }
 
-function initializeCursor(c: ReplicatedCursor): Cursor {
+function initializeCursor(c: ReplicatedCursor, div: HTMLElement): Cursor {
   const htmlFragment = `<svg
     id="cursor_${c.id}"
     class="cursor"
@@ -160,13 +158,18 @@ function initializeCursor(c: ReplicatedCursor): Cursor {
   const template = document.createElement('template')
   template.innerHTML = htmlFragment
   const cursorEl = template.content.firstChild as HTMLElement
+  cursorEl.classList.add("new")
+  div.appendChild(cursorEl)
+
+  function addPoint(point: number[]) {
+    const [x, y] = point
+    cursorEl.style.setProperty("transform", `translate(${x}px, ${y}px)`)
+  }
+
   const concreteCursor: Cursor = {
     ...c,
     el: cursorEl,
-    pc: new PerfectCursor((point: number[]) => {
-      const [x, y] = point
-      cursorEl.style.setProperty("transform", `translate(${x}px, ${y}px)`)
-    }),
+    pc: new PerfectCursor(addPoint),
     nStale: 0,
   }
   return concreteCursor
