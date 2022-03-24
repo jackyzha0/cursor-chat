@@ -6,12 +6,15 @@
   pointer-events: none;
 }
 
-#cursor-chat-layer .cursor {
+#cursor-chat-layer .cursor > svg {
   position: absolute;
   top: -17.5px;
   left: -17.5px;
   width: 35px;
   height: 35px;
+}
+
+#cursor-chat-layer .cursor {
   transition: opacity 1s ease;
 }
 
@@ -21,4 +24,18 @@
 
 #cursor-chat-layer .expiring {
   opacity: 0;
+}
+
+#cursor-chat-layer .cursor > p {
+  display: inline-block;
+  margin-top: 1em;
+  margin-left: 0.5em;
+  padding: 0.5em 1em;
+  position: relative;
+  border-radius: 20px;
+  border: 2px solid #00000011;
+  box-shadow: 7px 15px 36px 4px rgba(0,0,0,0.1);
+  max-width: 200px;
+  border-top-left-radius: 0;
+  font-family: sans-serif;
 }
