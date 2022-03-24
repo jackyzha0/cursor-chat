@@ -13,3 +13,7 @@
   width: 35px;
   height: 35px;
 }
+
+#cursor-chat-layer .stale, #cursor-chat-layer .new {
+  visibility: hidden;
+}

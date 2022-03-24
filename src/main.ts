@@ -11,6 +11,7 @@ interface Cursor {
   x: number
   y: number
   chat: string
+  nStale: number
   lastSent: string
   el: HTMLElement | undefined
   pc: PerfectCursor | undefined
@@ -28,6 +29,7 @@ class CursorChat {
   replicated_cursors: Y.Map<ReplicatedCursor>
   cursorLayerDiv: HTMLElement
   intervalId: number
+  toUpdate: boolean
 
   constructor(divId = "cursor-chat-layer", wsProvider = "wss://demos.yjs.dev") {
     const ld = document.getElementById(divId)
@@ -44,6 +46,9 @@ class CursorChat {
       this.room_id,
       this.doc
     )
+    this.toUpdate = true
+
+    console.log(`connecting to ${this.room_id} with id ${this.self_id}`)
 
     // initialize self
     this.me = {
@@ -54,6 +59,7 @@ class CursorChat {
       x: 0,
       y: 0,
       chat: "",
+      nStale: 0,
       lastSent: (new Date(0)).toUTCString(),
       el: undefined,
       pc: undefined,
@@ -65,27 +71,53 @@ class CursorChat {
 
     // attach mouse listener to update self object
     document.onmousemove = (evt) => {
-      this.me.x = evt.pageX;
-      this.me.y = evt.pageY;
+      if (this.me.x !== evt.pageX && this.me.y !== evt.pageY) {
+        this.toUpdate = true
+        this.me.x = evt.pageX
+        this.me.y = evt.pageY
+      }
     }
 
     // setup replication
     this.intervalId = setInterval(() => {
-      console.log(this.replicated_cursors)
-      // push self
-      this.replicated_cursors.set(this.self_id, this.me)
+      if (this.toUpdate) {
+        this.replicated_cursors.set(this.self_id, this.me)
+        this.toUpdate = false
+      }
 
-      // update local cache
-      this.replicated_cursors.forEach((cursor: ReplicatedCursor) => {
+      this.others.forEach((concrete) => {
+        if (concrete.nStale >= 40) {
+          concrete.el?.remove()
+          this.others.delete(concrete.id)
+        } else {
+          concrete.nStale++
+        }
+      })
+    }, 80)
+
+    // poll
+    this.replicated_cursors.observe(evt => {
+      const cursorsChanged = Array.from(evt.keysChanged)
+        .map(cursorId => this.replicated_cursors.get(cursorId))
+        .filter(cursorId => cursorId !== undefined) as ReplicatedCursor[]
+
+      cursorsChanged.forEach((cursor: ReplicatedCursor) => {
         if (cursor.id !== this.self_id) {
           if (this.others.has(cursor.id)) {
             // in cache, update
             const concrete = this.others.get(cursor.id) as Cursor
+
+            // increment stale-ness
+            concrete.nStale = 0
+            concrete.el?.classList.remove("stale")
+
+            console.log(`${cursor.id} => (${cursor.x}, ${cursor.y})`)
             concrete.pc?.addPoint([cursor.x, cursor.y])
             const updatedConcrete = {
               ...concrete,
               ...cursor,
             }
+            concrete.el?.classList.remove("new")
             this.others.set(cursor.id, updatedConcrete)
           } else {
             // new cursor, register and add to dom
@@ -98,20 +130,7 @@ class CursorChat {
           }
         }
       })
-
-      // delete old records
-      this.others.forEach((cursor: Cursor) => {
-        if (!this.replicated_cursors.has(cursor.id)) {
-          deleteCursor(cursor)
-        }
-      })
-    }, 80)
-  }
-
-  destroy() {
-    // TODO: properly clean up resources
-    this.replicated_cursors.delete(this.self_id)
-    clearInterval(this.intervalId)
+    })
   }
 }
 
@@ -145,23 +164,12 @@ function initializeCursor(c: ReplicatedCursor): Cursor {
     ...c,
     el: cursorEl,
     pc: new PerfectCursor((point: number[]) => {
-      [c.x, c.y] = point
-      cursorEl.style.setProperty("transform", `translate(${c.x}px, ${c.y}px)`)
-    })
+      const [x, y] = point
+      cursorEl.style.setProperty("transform", `translate(${x}px, ${y}px)`)
+    }),
+    nStale: 0,
   }
   return concreteCursor
 }
 
-function deleteCursor(c: Cursor) {
-  const cursorEl = document.getElementById(`cursor_${c.id}`)
-  if (c.pc) {
-    c.pc.dispose()
-  }
-  if (cursorEl) {
-    cursorEl.remove()
-  } else {
-    throw `Warning: couldn't find cursor with id ${c.id}!`
-  }
-}
-
-const _ = new CursorChat()
+new CursorChat()
