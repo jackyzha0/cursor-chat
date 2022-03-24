@@ -13,7 +13,6 @@ interface Cursor {
   chat: string
   nStale: number
   lastSent: string
-  el: HTMLElement | undefined
   pc: PerfectCursor | undefined
 }
 
@@ -61,7 +60,6 @@ class CursorChat {
       chat: "",
       nStale: 0,
       lastSent: (new Date(0)).toUTCString(),
-      el: undefined,
       pc: undefined,
     }
 
@@ -87,13 +85,15 @@ class CursorChat {
 
       this.others.forEach((concrete) => {
         if (concrete.nStale >= 40) {
-          concrete.el?.remove()
-          document.getElementById(`cursor_${concrete.id}`)?.remove()
-          concrete.pc?.dispose()
-          this.others.delete(concrete.id)
-        } else {
-          concrete.nStale++
+          const el = getCursorElement(concrete)
+          el?.classList.add("expiring")
+          if (concrete.nStale >= 60) {
+            el?.remove()
+            concrete.pc?.dispose()
+            this.others.delete(concrete.id)
+          }
         }
+        concrete.nStale++
       })
     }, 80)
 
@@ -108,10 +108,12 @@ class CursorChat {
           if (this.others.has(cursor.id)) {
             // in cache, update
             const concrete = this.others.get(cursor.id) as Cursor
+            const el = getCursorElement(concrete)
 
             // increment stale-ness
             concrete.nStale = 0
-            concrete.el?.classList.remove("stale")
+            el?.classList.remove("stale")
+            el?.classList.remove("expiring")
 
             concrete.pc?.addPoint([cursor.x, cursor.y])
             const updatedConcrete = {
@@ -119,7 +121,7 @@ class CursorChat {
               ...cursor,
               pc: concrete.pc,
             }
-            concrete.el?.classList.remove("new")
+            el?.classList.remove("new")
             this.others.set(cursor.id, updatedConcrete)
           } else {
             // new cursor, register and add to dom
@@ -166,13 +168,15 @@ function initializeCursor(c: ReplicatedCursor, div: HTMLElement): Cursor {
     cursorEl.style.setProperty("transform", `translate(${x}px, ${y}px)`)
   }
 
-  const concreteCursor: Cursor = {
+  return {
     ...c,
-    el: cursorEl,
     pc: new PerfectCursor(addPoint),
     nStale: 0,
   }
-  return concreteCursor
+}
+
+function getCursorElement(c: Cursor) {
+  return document.getElementById(`cursor_${c.id}`)
 }
 
 new CursorChat()

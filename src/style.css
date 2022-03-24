@@ -8,12 +8,17 @@
 
 #cursor-chat-layer .cursor {
   position: absolute;
-  top: -15px;
-  left: -15px;
+  top: -17.5px;
+  left: -17.5px;
   width: 35px;
   height: 35px;
+  transition: opacity 1s ease;
 }
 
 #cursor-chat-layer .stale, #cursor-chat-layer .new {
   visibility: hidden;
+}
+
+#cursor-chat-layer .expiring {
+  opacity: 0;
 }
