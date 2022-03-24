@@ -2,6 +2,17 @@
   "name": "cursor-chat",
   "private": true,
   "version": "0.0.0",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/cursor-chat.umd.js",
+  "module": "./dist/cursor-chat.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/cursor-chat.es.js",
+      "require": "./dist/cursor-chat.umd.js"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
