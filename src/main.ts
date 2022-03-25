@@ -15,7 +15,7 @@ interface Cursor {
   pc: PerfectCursor | undefined
 }
 
-type ReplicatedCursor = Pick<Cursor, "id" | "color" | "x" | "y" | "chat">;
+type ReplicatedCursor = Pick<Cursor, "id" | "color" | "x" | "y" | "chat">
 
 class CursorChat {
   self_id: string
@@ -29,10 +29,11 @@ class CursorChat {
   intervalId: number
   toUpdate: boolean
 
-  constructor(divId = "cursor-chat-layer", wsProvider = "wss://demos.yjs.dev") {
-    const ld = document.getElementById(divId)
-    if (!ld) {
-      throw `Couldn't find div with id ${divId} Make sure DOM content is fully loaded before initializing`
+  constructor(wsProvider = "wss://demos.yjs.dev") {
+    const ld = document.getElementById("cursor-chat-layer")
+    const chat = document.getElementById("cursor-chat-box") as HTMLInputElement
+    if (!(ld && chat)) {
+      throw `Couldn't find cursor-chat-related divs! Make sure DOM content is fully loaded before initializing`
     }
     this.cursorLayerDiv = ld
 
@@ -72,6 +73,7 @@ class CursorChat {
         this.me.x = evt.pageX
         this.me.y = evt.pageY
       }
+      chat.style.setProperty("transform", `translate(${evt.pageX}px, ${evt.pageY}px)`)
     }
 
     // setup replication
@@ -95,6 +97,31 @@ class CursorChat {
       })
     }, 80)
 
+    // setup key handlers
+    document.addEventListener('keydown', (event) => {
+      if (event.key === "/") {
+        event.preventDefault()
+        if (chat.value === "" && chat.style.getPropertyValue("display") === "block") {
+          // empty, most likely toggle intent
+          chat.style.setProperty("display", "none")
+        } else {
+          chat.style.setProperty("display", "block")
+          chat.focus()
+        }
+      } else if (event.key === "Escape") {
+        event.preventDefault()
+        chat.value = ""
+        chat.style.setProperty("display", "none")
+      } else if (event.key === "Enter") {
+        event.preventDefault()
+      }
+    })
+
+    document.addEventListener('keyup', () => {
+      this.me.chat = chat.value
+      this.toUpdate = true
+    })
+
     // poll
     this.replicated_cursors.observe(evt => {
       const cursorsChanged = Array.from(evt.keysChanged)
@@ -107,6 +134,16 @@ class CursorChat {
             // in cache, update
             const concrete = this.others.get(cursor.id) as Cursor
             const el = getCursorElement(concrete)
+            const chatEl = getChatElement(concrete)
+
+            if (concrete.chat !== cursor.chat && chatEl) {
+              if (cursor.chat === "") {
+                chatEl.classList.remove("show")
+              } else {
+                chatEl.classList.add("show")
+              }
+              chatEl.innerText = cursor.chat
+            }
 
             // increment stale-ness
             concrete.nStale = 0
@@ -153,7 +190,7 @@ function initializeCursor(c: ReplicatedCursor, div: HTMLElement): Cursor {
         <path d="m13 10.814v11.188l2.969-2.866.428-.139h4.768z" />
       </g>
     </svg>
-    <p id="chat_${c.id}" style="background-color: ${c.color}">yaba daba doooooooo but make that shit so fucking long it doesn't fit on one line any more</p>
+    <p id="chat_${c.id}" class="chat" style="background-color: ${c.color}"></p>
   </div>`
 
   const template = document.createElement('template')
@@ -161,6 +198,9 @@ function initializeCursor(c: ReplicatedCursor, div: HTMLElement): Cursor {
   const cursorEl = template.content.firstChild as HTMLElement
   cursorEl.classList.add("new")
   div.appendChild(cursorEl)
+
+  const chatEl = getChatElement(c) as HTMLElement
+  chatEl.innerText = c.chat
 
   function addPoint(point: number[]) {
     const [x, y] = point
@@ -174,8 +214,12 @@ function initializeCursor(c: ReplicatedCursor, div: HTMLElement): Cursor {
   }
 }
 
-function getCursorElement(c: Cursor) {
+function getCursorElement(c: Cursor | ReplicatedCursor) {
   return document.getElementById(`cursor_${c.id}`)
+}
+
+function getChatElement(c: Cursor | ReplicatedCursor) {
+  return document.getElementById(`chat_${c.id}`)
 }
 
 new CursorChat()
