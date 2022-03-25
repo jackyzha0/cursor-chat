@@ -6615,7 +6615,7 @@ var _PerfectCursor = class {
 var PerfectCursor = _PerfectCursor;
 PerfectCursor.MAX_INTERVAL = 300;
 class CursorChat {
-  constructor(divId = "cursor-chat-layer", wsProvider = "wss://demos.yjs.dev") {
+  constructor(wsProvider = "wss://demos.yjs.dev") {
     __publicField(this, "self_id");
     __publicField(this, "room_id");
     __publicField(this, "doc");
@@ -6626,9 +6626,10 @@ class CursorChat {
     __publicField(this, "cursorLayerDiv");
     __publicField(this, "intervalId");
     __publicField(this, "toUpdate");
-    const ld = document.getElementById(divId);
-    if (!ld) {
-      throw `Couldn't find div with id ${divId} Make sure DOM content is fully loaded before initializing`;
+    const ld = document.getElementById("cursor-chat-layer");
+    const chat = document.getElementById("cursor-chat-box");
+    if (!(ld && chat)) {
+      throw `Couldn't find cursor-chat-related divs! Make sure DOM content is fully loaded before initializing`;
     }
     this.cursorLayerDiv = ld;
     this.self_id = nanoid();
@@ -6640,13 +6641,12 @@ class CursorChat {
     this.me = {
       id: this.self_id,
       color: randomcolor({
-        hue: "#e46262"
+        luminosity: "light"
       }),
       x: 0,
       y: 0,
       chat: "",
       nStale: 0,
-      lastSent: new Date(0).toUTCString(),
       pc: void 0
     };
     this.replicated_cursors = this.doc.getMap("state");
@@ -6658,6 +6658,7 @@ class CursorChat {
         this.me.x = evt.pageX;
         this.me.y = evt.pageY;
       }
+      chat.style.setProperty("transform", `translate(${evt.pageX}px, ${evt.pageY}px)`);
     };
     this.intervalId = setInterval(() => {
       if (this.toUpdate) {
@@ -6678,6 +6679,27 @@ class CursorChat {
         concrete.nStale++;
       });
     }, 80);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "/") {
+        event.preventDefault();
+        if (chat.value === "" && chat.style.getPropertyValue("display") === "block") {
+          chat.style.setProperty("display", "none");
+        } else {
+          chat.style.setProperty("display", "block");
+          chat.focus();
+        }
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        chat.value = "";
+        chat.style.setProperty("display", "none");
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+      }
+    });
+    document.addEventListener("keyup", () => {
+      this.me.chat = chat.value;
+      this.toUpdate = true;
+    });
     this.replicated_cursors.observe((evt) => {
       const cursorsChanged = Array.from(evt.keysChanged).map((cursorId) => this.replicated_cursors.get(cursorId)).filter((cursorId) => cursorId !== void 0);
       cursorsChanged.forEach((cursor) => {
@@ -6686,6 +6708,15 @@ class CursorChat {
           if (this.others.has(cursor.id)) {
             const concrete = this.others.get(cursor.id);
             const el = getCursorElement(concrete);
+            const chatEl = getChatElement(concrete);
+            if (concrete.chat !== cursor.chat && chatEl) {
+              if (cursor.chat === "") {
+                chatEl.classList.remove("show");
+              } else {
+                chatEl.classList.add("show");
+              }
+              chatEl.innerText = cursor.chat;
+            }
             concrete.nStale = 0;
             el == null ? void 0 : el.classList.remove("stale");
             el == null ? void 0 : el.classList.remove("expiring");
@@ -6705,32 +6736,35 @@ class CursorChat {
   }
 }
 function initializeCursor(c, div) {
-  const htmlFragment = `<svg
-    id="cursor_${c.id}"
-    class="cursor"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 35 35"
-    fill="none"
-    fillRule="evenodd"
-  >
-    <g fill="rgba(0,0,0,.2)" transform="translate(1,1)">
-      <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
-      <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
-    </g>
-    <g fill="white">
-      <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
-      <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
-    </g>
-    <g fill="${c.color}">
-      <path d="m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" />
-      <path d="m13 10.814v11.188l2.969-2.866.428-.139h4.768z" />
-    </g>
-  </svg>`;
+  const htmlFragment = `<div id="cursor_${c.id}" class="cursor">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 35 35"
+      fill="none"
+      fillRule="evenodd"
+    >
+      <g fill="rgba(0,0,0,.2)" transform="translate(1,1)">
+        <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
+        <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
+      </g>
+      <g fill="white">
+        <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
+        <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
+      </g>
+      <g fill="${c.color}">
+        <path d="m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" />
+        <path d="m13 10.814v11.188l2.969-2.866.428-.139h4.768z" />
+      </g>
+    </svg>
+    <p id="chat_${c.id}" class="chat" style="background-color: ${c.color}"></p>
+  </div>`;
   const template = document.createElement("template");
   template.innerHTML = htmlFragment;
   const cursorEl = template.content.firstChild;
   cursorEl.classList.add("new");
   div.appendChild(cursorEl);
+  const chatEl = getChatElement(c);
+  chatEl.innerText = c.chat;
   function addPoint(point) {
     const [x, y] = point;
     cursorEl.style.setProperty("transform", `translate(${x}px, ${y}px)`);
@@ -6742,5 +6776,8 @@ function initializeCursor(c, div) {
 }
 function getCursorElement(c) {
   return document.getElementById(`cursor_${c.id}`);
+}
+function getChatElement(c) {
+  return document.getElementById(`chat_${c.id}`);
 }
 new CursorChat();
