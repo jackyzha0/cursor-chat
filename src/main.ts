@@ -99,20 +99,20 @@ class CursorChat {
 
     // setup key handlers
     document.addEventListener('keydown', (event) => {
-      if (event.key === "/") {
+      if (event.key === "/" && chat.value === "") {
         event.preventDefault()
-        if (chat.value === "" && chat.style.getPropertyValue("display") === "block") {
+        if (chat.style.getPropertyValue("display") === "block") {
           // empty, most likely toggle intent
           chat.style.setProperty("display", "none")
         } else {
           chat.style.setProperty("display", "block")
           chat.focus()
         }
-      } else if (event.key === "Escape") {
+      } if (event.key === "Escape") {
         event.preventDefault()
         chat.value = ""
         chat.style.setProperty("display", "none")
-      } else if (event.key === "Enter") {
+      } if (event.key === "Enter") {
         event.preventDefault()
       }
     })

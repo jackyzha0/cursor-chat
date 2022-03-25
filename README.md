@@ -7,6 +7,11 @@ Built on top of [yjs](https://github.com/yjs/yjs) and [perfect-cursors](https://
 
 For a React version of this library, check out [y-presence](https://github.com/nimeshnayaju/y-presence).
 
+## Demo
+![Cursor Chat Demo](./docs/demo.gif)
+
+Press `/` to start chatting and `esc` to clear your chat bubble!
+
 ## Usage
 Include this fragment in your HTML somewhere to include the base HTML divs, the compiled JavaScript bundle, and the styling.
 
