@@ -5,7 +5,7 @@ import { nanoid } from "nanoid"
 import randomcolor from "randomcolor"
 import { PerfectCursor } from "perfect-cursors"
 
-export interface Cursor {
+interface Cursor {
   id: string
   color: string
   x: number
@@ -15,9 +15,9 @@ export interface Cursor {
   pc: PerfectCursor | undefined
 }
 
-export type ReplicatedCursor = Pick<Cursor, "id" | "color" | "x" | "y" | "chat">
+type ReplicatedCursor = Pick<Cursor, "id" | "color" | "x" | "y" | "chat">
 
-export default class CursorChat {
+class CursorChat {
   self_id: string
   room_id: string
   doc: Y.Doc
@@ -221,3 +221,4 @@ function getChatElement(c: Cursor | ReplicatedCursor) {
   return document.getElementById(`chat_${c.id}`)
 }
 
+new CursorChat()

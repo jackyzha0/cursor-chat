@@ -6782,4 +6782,4 @@ function getCursorElement(c) {
 function getChatElement(c) {
   return document.getElementById(`chat_${c.id}`);
 }
-export { CursorChat as default };
+new CursorChat();
