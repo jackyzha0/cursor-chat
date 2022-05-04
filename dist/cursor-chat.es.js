@@ -6637,7 +6637,6 @@ class CursorChat {
     this.doc = new Doc();
     this.provider = new WebsocketProvider(wsProvider, this.room_id, this.doc);
     this.toUpdate = true;
-    console.log(`connecting to ${this.room_id} with id ${this.self_id}`);
     this.me = {
       id: this.self_id,
       color: randomcolor({
@@ -6674,6 +6673,7 @@ class CursorChat {
             el == null ? void 0 : el.remove();
             (_a = concrete.pc) == null ? void 0 : _a.dispose();
             this.others.delete(concrete.id);
+            this.replicated_cursors.delete(concrete.id);
           }
         }
         concrete.nStale++;

@@ -47,8 +47,6 @@ class CursorChat {
     )
     this.toUpdate = true
 
-    console.log(`connecting to ${this.room_id} with id ${this.self_id}`)
-
     // initialize self
     this.me = {
       id: this.self_id,
@@ -91,6 +89,7 @@ class CursorChat {
             el?.remove()
             concrete.pc?.dispose()
             this.others.delete(concrete.id)
+            this.replicated_cursors.delete(concrete.id)
           }
         }
         concrete.nStale++
