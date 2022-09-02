@@ -1,9 +1,10 @@
 import './style.css'
-import { WebsocketProvider } from "y-websocket"
-import * as Y from "yjs"
-import { nanoid } from "nanoid"
-import randomcolor from "randomcolor"
-import { PerfectCursor } from "perfect-cursors"
+
+import * as Y from 'yjs'
+import { WebrtcProvider } from 'y-webrtc'
+import { PerfectCursor } from 'perfect-cursors'
+import { nanoid } from 'nanoid'
+import randomcolor from 'randomcolor'
 
 interface Cursor {
   id: string
@@ -11,165 +12,10 @@ interface Cursor {
   x: number
   y: number
   chat: string
-  nStale: number
-  pc: PerfectCursor | undefined
 }
 
-type ReplicatedCursor = Pick<Cursor, "id" | "color" | "x" | "y" | "chat">
-
-class CursorChat {
-  self_id: string
-  room_id: string
-  doc: Y.Doc
-  provider: WebsocketProvider
-  me: Cursor
-  others: Map<string, Cursor>
-  replicated_cursors: Y.Map<ReplicatedCursor>
-  cursorLayerDiv: HTMLElement
-  intervalId: number
-  toUpdate: boolean
-
-  constructor(wsProvider = "wss://demos.yjs.dev") {
-    const ld = document.getElementById("cursor-chat-layer")
-    const chat = document.getElementById("cursor-chat-box") as HTMLInputElement
-    if (!(ld && chat)) {
-      throw `Couldn't find cursor-chat-related divs! Make sure DOM content is fully loaded before initializing`
-    }
-    this.cursorLayerDiv = ld
-
-    this.self_id = nanoid()
-    this.room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`
-    this.doc = new Y.Doc()
-    this.provider = new WebsocketProvider(
-      wsProvider,
-      this.room_id,
-      this.doc
-    )
-    this.toUpdate = true
-
-    // initialize self
-    this.me = {
-      id: this.self_id,
-      color: randomcolor({
-        luminosity: 'light',
-      }),
-      x: 0,
-      y: 0,
-      chat: "",
-      nStale: 0,
-      pc: undefined,
-    }
-
-    this.replicated_cursors = this.doc.getMap('state')
-    this.replicated_cursors.clear()
-    this.others = new Map()
-
-    // attach mouse listener to update self object
-    document.onmousemove = (evt) => {
-      if (this.me.x !== evt.pageX && this.me.y !== evt.pageY) {
-        this.toUpdate = true
-        this.me.x = evt.pageX
-        this.me.y = evt.pageY
-      }
-      chat.style.setProperty("transform", `translate(${evt.pageX}px, ${evt.pageY}px)`)
-    }
-
-    // setup replication
-    this.intervalId = setInterval(() => {
-      if (this.toUpdate) {
-        this.replicated_cursors.set(this.self_id, this.me)
-        this.toUpdate = false
-      }
-
-      this.others.forEach((concrete) => {
-        if (concrete.nStale >= 40) {
-          const el = getCursorElement(concrete)
-          el?.classList.add("expiring")
-          if (concrete.nStale >= 60) {
-            el?.remove()
-            concrete.pc?.dispose()
-            this.others.delete(concrete.id)
-            this.replicated_cursors.delete(concrete.id)
-          }
-        }
-        concrete.nStale++
-      })
-    }, 80)
-
-    // setup key handlers
-    document.addEventListener('keydown', (event) => {
-      if (event.key === "/" && chat.value === "") {
-        event.preventDefault()
-        if (chat.style.getPropertyValue("display") === "block") {
-          // empty, most likely toggle intent
-          chat.style.setProperty("display", "none")
-        } else {
-          chat.style.setProperty("display", "block")
-          chat.focus()
-        }
-      } if (event.key === "Escape") {
-        event.preventDefault()
-        chat.value = ""
-        chat.style.setProperty("display", "none")
-      } if (event.key === "Enter") {
-        event.preventDefault()
-      }
-    })
-
-    document.addEventListener('keyup', () => {
-      this.me.chat = chat.value
-      this.toUpdate = true
-    })
-
-    // poll
-    this.replicated_cursors.observe(evt => {
-      const cursorsChanged = Array.from(evt.keysChanged)
-        .map(cursorId => this.replicated_cursors.get(cursorId))
-        .filter(cursorId => cursorId !== undefined) as ReplicatedCursor[]
-
-      cursorsChanged.forEach((cursor: ReplicatedCursor) => {
-        if (cursor.id !== this.self_id) {
-          if (this.others.has(cursor.id)) {
-            // in cache, update
-            const concrete = this.others.get(cursor.id) as Cursor
-            const el = getCursorElement(concrete)
-            const chatEl = getChatElement(concrete)
-
-            if (concrete.chat !== cursor.chat && chatEl) {
-              if (cursor.chat === "") {
-                chatEl.classList.remove("show")
-              } else {
-                chatEl.classList.add("show")
-              }
-              chatEl.innerText = cursor.chat
-            }
-
-            // increment stale-ness
-            concrete.nStale = 0
-            el?.classList.remove("stale")
-            el?.classList.remove("expiring")
-
-            concrete.pc?.addPoint([cursor.x, cursor.y])
-            const updatedConcrete = {
-              ...concrete,
-              ...cursor,
-              pc: concrete.pc,
-            }
-            el?.classList.remove("new")
-            this.others.set(cursor.id, updatedConcrete)
-          } else {
-            // new cursor, register and add to dom
-            const concrete = initializeCursor(cursor, this.cursorLayerDiv)
-            this.others.set(cursor.id, concrete)
-          }
-        }
-      })
-    })
-  }
-}
-
-function initializeCursor(c: ReplicatedCursor, div: HTMLElement): Cursor {
-  const htmlFragment = `<div id="cursor_${c.id}" class="cursor">
+function cursorFactory(cursor: Cursor): HTMLElement {
+  const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 35 35"
@@ -184,41 +30,130 @@ function initializeCursor(c: ReplicatedCursor, div: HTMLElement): Cursor {
         <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
         <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
       </g>
-      <g fill="${c.color}">
+      <g fill="${cursor.color}">
         <path d="m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" />
         <path d="m13 10.814v11.188l2.969-2.866.428-.139h4.768z" />
       </g>
     </svg>
-    <p id="chat_${c.id}" class="chat" style="background-color: ${c.color}"></p>
-  </div>`
+    <p id="chat_${cursor.id}" class="chat" style="background-color: ${cursor.color}">${cursor.chat}</p>
+  </div>`;
+  const template = document.createElement('template');
+  template.innerHTML = htmlFragment;
+  const cursorEl = template.content.firstChild as HTMLElement;
+  return cursorEl;
+}
 
-  const template = document.createElement('template')
-  template.innerHTML = htmlFragment
-  const cursorEl = template.content.firstChild as HTMLElement
-  cursorEl.classList.add("new")
-  div.appendChild(cursorEl)
+const initCursorChat = (cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+  const cursorDiv = document.getElementById(cursorDivId)!
+  const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
 
-  const chatEl = getChatElement(c) as HTMLElement
-  chatEl.innerText = c.chat
-
-  function addPoint(point: number[]) {
-    const [x, y] = point
-    cursorEl.style.setProperty("transform", `translate(${x}px, ${y}px)`)
+  if (!cursorDiv || !chatDiv) {
+     throw `Couldn't find cursor-chat-related divs! Make sure DOM content is fully loaded before initializing`
   }
 
-  return {
-    ...c,
-    pc: new PerfectCursor(addPoint),
-    nStale: 0,
+  const me: Cursor = {
+    id: nanoid(),
+    color: randomcolor(),
+    x: 0,
+    y: 0,
+    chat: ""
   }
+
+  const room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`
+  const doc = new Y.Doc()
+  new WebrtcProvider(
+    room_id,
+    doc
+  )
+  
+  const others: Y.Map<Cursor> = doc.getMap("state")
+  let sendUpdate = false
+  addEventListener('beforeunload', () => {
+    others.delete(me.id)
+  })
+  setInterval(() => {
+    if (sendUpdate) {
+      others.set(me.id, me)
+      sendUpdate = false
+    }
+  }, 80)
+
+
+  document.onmousemove = (evt) => {
+    if (me.x !== evt.pageX && me.y !== evt.pageY) {
+      sendUpdate = true
+      me.x = evt.pageX
+      me.y = evt.pageY
+      chatDiv.style.setProperty("transform", `translate(${me.x}px, ${me.y}px)`)
+    }
+  }
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === "/" && chatDiv.value === "") {
+      event.preventDefault()
+      if (chatDiv.style.getPropertyValue("display") === "block") {
+        chatDiv.style.setProperty("display", "none")
+      } else {
+        chatDiv.style.setProperty("display", "block")
+        chatDiv.focus()
+      }
+    } else if (event.key === "Escape") {
+      event.preventDefault()
+      chatDiv.value = ""
+      chatDiv.style.setProperty("display", "none")
+    } else if (event.key === "Enter") {
+      event.preventDefault()
+    }
+  })
+
+  document.addEventListener('keyup', () => {
+    me.chat = chatDiv.value
+    sendUpdate = true
+  })
+  
+  const cursor_interp = new Map<string, PerfectCursor>()
+  others.observe(evt => {
+    const updated_cursors = evt.changes.keys
+    updated_cursors.forEach((change, cursor_id) => {
+      if (cursor_id !== me.id) {
+        switch (change.action) {
+          case 'add':
+            // make a new cursor
+            const new_cursor = others.get(cursor_id)!;
+            const new_cursor_div = cursorFactory(new_cursor);
+            new_cursor_div.classList.add("new")
+            cursorDiv.appendChild(new_cursor_div);
+            const add_point_closure = ([x, y]: number[]) => new_cursor_div.style.setProperty("transform", `translate(${x}px, ${y}px)`);
+            const perfect_cursor = new PerfectCursor(add_point_closure);
+            perfect_cursor.addPoint([new_cursor.x, new_cursor.y]);
+            cursor_interp.set(cursor_id, perfect_cursor);      
+            break;
+          case 'update':
+            const updated_cursor = others.get(cursor_id)!;
+            const updated_cursor_div = document.getElementById(`cursor_${cursor_id}`)!;
+            const updated_chat_div = document.getElementById(`chat_${cursor_id}`)!;
+
+            if (updated_cursor.chat === "") {
+              updated_chat_div.classList.remove("show")
+            } else {
+              updated_chat_div.classList.add("show")
+            }
+            updated_chat_div.innerText = updated_cursor.chat
+            updated_cursor_div.classList.remove("new")
+            cursor_interp.get(cursor_id)!.addPoint([updated_cursor.x, updated_cursor.y]);
+            break;
+          case 'delete':
+            const old_cursor_div = document.getElementById(`cursor_${cursor_id}`)!;
+            old_cursor_div.classList.add("expiring")
+            setTimeout(() => {
+              old_cursor_div.remove();
+              cursor_interp.delete(cursor_id);
+            }, 1000)
+            break;
+        }
+      }
+    })
+  })
 }
 
-function getCursorElement(c: Cursor | ReplicatedCursor) {
-  return document.getElementById(`cursor_${c.id}`)
-}
-
-function getChatElement(c: Cursor | ReplicatedCursor) {
-  return document.getElementById(`chat_${c.id}`)
-}
-
-new CursorChat()
+initCursorChat()
