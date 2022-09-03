@@ -1,5 +1,5 @@
 # cursor-chat
-💬 lightweight (29.59kB) cursor chat à la Figma for digital co-existing + presence
+💬 (63.4kB) lightweight cursor chat à la Figma for digital co-existing + presence
 
 As a warning, this library is for experimental purposes and should not be used in production (but very suitable for personal websites and playful experiments!).
 
