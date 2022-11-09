@@ -9878,7 +9878,7 @@ function cursorFactory(cursor) {
   const cursorEl = template.content.firstChild;
   return cursorEl;
 }
-const initCursorChat = (cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+const initCursorChat = (room_id, cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
   const cursorDiv = document.getElementById(cursorDivId);
   const chatDiv = document.getElementById(chatDivId);
   if (!cursorDiv || !chatDiv) {
@@ -9891,7 +9891,7 @@ const initCursorChat = (cursorDivId = "cursor-chat-layer", chatDivId = "cursor-c
     y: 0,
     chat: ""
   };
-  const room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`;
+  room_id = room_id || `cursor-chat-room-${window.location.host + window.location.pathname}`;
   const doc2 = new Doc();
   new WebrtcProvider(room_id, doc2);
   const others = doc2.getMap("state");
@@ -9976,4 +9976,4 @@ const initCursorChat = (cursorDivId = "cursor-chat-layer", chatDivId = "cursor-c
     });
   });
 };
-initCursorChat();
+export { initCursorChat };

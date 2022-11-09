@@ -44,7 +44,6 @@ function cursorFactory(cursor: Cursor): HTMLElement {
 }
 
 export const initCursorChat = (room_id?: string, cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
-  console.log(room_id)
   const cursorDiv = document.getElementById(cursorDivId)!
   const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
 
