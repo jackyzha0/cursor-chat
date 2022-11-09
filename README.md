@@ -20,7 +20,7 @@ Include this fragment in your HTML somewhere to include the base HTML divs, the 
   <input type="text" id="cursor-chat-box">
 </div>
 <script type="module">
-  import { initCursorChat } from 'https://cdn.skypack.dev/cursor-chat'
+  import { initCursorChat } from 'https://esm.sh/cursor-chat'
   initCursorChat("your-room-name-here")
 </script>
 <link rel="stylesheet" type="text/css" href="https://unpkg.com/cursor-chat/dist/style.css"/>
