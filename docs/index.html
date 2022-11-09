@@ -15,7 +15,10 @@
       <p>A small library by <a href="https://jzhao.xyz">Jacky</a> for digital co-existing + presence :) Press <code>/</code> to start chatting and <code>esc</code> to clear your bubble!</p>
       <p><a href="https://github.com/jackyzha0/cursor-chat">View Source</a></p>
     </div>
-    <script src="https://unpkg.com/cursor-chat"></script>
+    <script type="module">
+      import { initCursorChat } from 'https://esm.sh/cursor-chat'
+      initCursorChat("demo-room")
+    </script>
   </body>
   <style>
   #app {

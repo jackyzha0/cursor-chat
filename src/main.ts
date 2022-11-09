@@ -43,7 +43,8 @@ function cursorFactory(cursor: Cursor): HTMLElement {
   return cursorEl;
 }
 
-const initCursorChat = (cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+export const initCursorChat = (room_id?: string, cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+  console.log(room_id)
   const cursorDiv = document.getElementById(cursorDivId)!
   const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
 
@@ -59,7 +60,7 @@ const initCursorChat = (cursorDivId = "cursor-chat-layer", chatDivId = "cursor-c
     chat: ""
   }
 
-  const room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`
+  room_id = room_id || `cursor-chat-room-${window.location.host + window.location.pathname}`
   const doc = new Y.Doc()
   new WebrtcProvider(
     room_id,
@@ -155,5 +156,3 @@ const initCursorChat = (cursorDivId = "cursor-chat-layer", chatDivId = "cursor-c
     })
   })
 }
-
-initCursorChat()
