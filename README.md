@@ -19,6 +19,9 @@ Include this fragment in your HTML somewhere to include the base HTML divs, the 
 <div id="cursor-chat-layer">
   <input type="text" id="cursor-chat-box">
 </div>
-<script src="https://unpkg.com/cursor-chat"></script>
+<script type="module">
+  import { initCursorChat } from 'https://cdn.skypack.dev/cursor-chat'
+  initCursorChat("your-room-name-here")
+</script>
 <link rel="stylesheet" type="text/css" href="https://unpkg.com/cursor-chat/dist/style.css"/>
 ```
