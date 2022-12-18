@@ -43,7 +43,7 @@ function cursorFactory(cursor: Cursor): HTMLElement {
   return cursorEl;
 }
 
-export const initCursorChat = (room_id?: string, cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
   const cursorDiv = document.getElementById(cursorDivId)!
   const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
 
@@ -89,7 +89,7 @@ export const initCursorChat = (room_id?: string, cursorDivId = "cursor-chat-laye
   }
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === "/" && chatDiv.value === "") {
+    if (event.key === triggerKey && chatDiv.value === "") {
       event.preventDefault()
       if (chatDiv.style.getPropertyValue("display") === "block") {
         chatDiv.style.setProperty("display", "none")
