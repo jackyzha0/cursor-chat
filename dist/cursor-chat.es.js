@@ -9878,7 +9878,7 @@ function cursorFactory(cursor) {
   const cursorEl = template.content.firstChild;
   return cursorEl;
 }
-const initCursorChat = (room_id, cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
   const cursorDiv = document.getElementById(cursorDivId);
   const chatDiv = document.getElementById(chatDivId);
   if (!cursorDiv || !chatDiv) {
@@ -9914,7 +9914,7 @@ const initCursorChat = (room_id, cursorDivId = "cursor-chat-layer", chatDivId = 
     }
   };
   document.addEventListener("keydown", (event) => {
-    if (event.key === "/" && chatDiv.value === "") {
+    if (event.key === triggerKey && chatDiv.value === "") {
       event.preventDefault();
       if (chatDiv.style.getPropertyValue("display") === "block") {
         chatDiv.style.setProperty("display", "none");
