@@ -126,7 +126,7 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
             const new_cursor = others.get(cursor_id)!;
             const new_cursor_div = cursorFactory(new_cursor);
             new_cursor_div.classList.add("new")
-            cursorDiv.appendChild(new_cursor_div);
+            cursorDiv.prepend(new_cursor_div);
             const add_point_closure = ([x, y]: number[]) => new_cursor_div.style.setProperty("transform", `translate(${x}px, ${y}px)`);
             const perfect_cursor = new PerfectCursor(add_point_closure);
             perfect_cursor.addPoint([new_cursor.x, new_cursor.y]);
