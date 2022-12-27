@@ -34,7 +34,7 @@
   margin-top: 1rem;
   margin-left: 0.5rem;
   padding: 0.6rem 1rem;
-  position: relative;
+  position: absolute;
   border-radius: 20px;
   border: 2px solid #00000011;
   box-shadow: 7px 15px 36px 4px rgba(0,0,0,0.1);
