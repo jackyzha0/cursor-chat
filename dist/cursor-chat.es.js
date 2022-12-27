@@ -9912,11 +9912,12 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
     }
   };
   document.addEventListener("keydown", (event) => {
-    if (event.key === triggerKey && chatDiv.value === "") {
-      event.preventDefault();
-      if (chatDiv.style.getPropertyValue("display") === "block") {
+    if (event.key === triggerKey) {
+      if (chatDiv.style.getPropertyValue("display") === "block" && chatDiv.value === "") {
+        event.preventDefault();
         chatDiv.style.setProperty("display", "none");
       } else {
+        event.preventDefault();
         chatDiv.style.setProperty("display", "block");
         chatDiv.focus();
       }
@@ -9942,7 +9943,7 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
             const new_cursor = others.get(cursor_id);
             const new_cursor_div = cursorFactory(new_cursor);
             new_cursor_div.classList.add("new");
-            cursorDiv.prepend(new_cursor_div);
+            cursorDiv.appendChild(new_cursor_div);
             const add_point_closure = ([x, y]) => new_cursor_div.style.setProperty("transform", `translate(${x}px, ${y}px)`);
             const perfect_cursor = new PerfectCursor(add_point_closure);
             perfect_cursor.addPoint([new_cursor.x, new_cursor.y]);

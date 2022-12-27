@@ -48,7 +48,7 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
   const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
 
   if (!cursorDiv || !chatDiv) {
-     throw `Couldn't find cursor-chat-related divs! Make sure DOM content is fully loaded before initializing`
+    throw `Couldn't find cursor-chat-related divs! Make sure DOM content is fully loaded before initializing`
   }
 
   const me: Cursor = {
@@ -65,7 +65,7 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
     room_id,
     doc
   )
-  
+
   const others: Y.Map<Cursor> = doc.getMap("state")
   let sendUpdate = false
 
@@ -93,11 +93,12 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
   }
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === triggerKey && chatDiv.value === "") {
-      event.preventDefault()
-      if (chatDiv.style.getPropertyValue("display") === "block") {
+    if (event.key === triggerKey) {
+      if (chatDiv.style.getPropertyValue("display") === "block" && chatDiv.value === "") {
+        event.preventDefault()
         chatDiv.style.setProperty("display", "none")
       } else {
+        event.preventDefault()
         chatDiv.style.setProperty("display", "block")
         chatDiv.focus()
       }
@@ -114,7 +115,7 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
     me.chat = chatDiv.value
     sendUpdate = true
   })
-  
+
   const cursor_interp = new Map<string, PerfectCursor>()
   others.observe(evt => {
     const updated_cursors = evt.changes.keys
@@ -126,11 +127,11 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
             const new_cursor = others.get(cursor_id)!;
             const new_cursor_div = cursorFactory(new_cursor);
             new_cursor_div.classList.add("new")
-            cursorDiv.prepend(new_cursor_div);
+            cursorDiv.appendChild(new_cursor_div);
             const add_point_closure = ([x, y]: number[]) => new_cursor_div.style.setProperty("transform", `translate(${x}px, ${y}px)`);
             const perfect_cursor = new PerfectCursor(add_point_closure);
             perfect_cursor.addPoint([new_cursor.x, new_cursor.y]);
-            cursor_interp.set(cursor_id, perfect_cursor);      
+            cursor_interp.set(cursor_id, perfect_cursor);
             break;
           case 'update':
             const updated_cursor = others.get(cursor_id)!;
