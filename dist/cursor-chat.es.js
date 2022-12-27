@@ -9504,23 +9504,19 @@ var _PerfectCursor = class {
 };
 var PerfectCursor = _PerfectCursor;
 PerfectCursor.MAX_INTERVAL = 300;
-let nanoid = (size = 21) => {
-  let id = "";
-  let bytes = crypto.getRandomValues(new Uint8Array(size));
-  while (size--) {
-    let byte = bytes[size] & 63;
-    if (byte < 36) {
-      id += byte.toString(36);
-    } else if (byte < 62) {
-      id += (byte - 26).toString(36).toUpperCase();
-    } else if (byte < 63) {
-      id += "_";
-    } else {
-      id += "-";
-    }
+let nanoid = (size = 21) => crypto.getRandomValues(new Uint8Array(size)).reduce((id, byte) => {
+  byte &= 63;
+  if (byte < 36) {
+    id += byte.toString(36);
+  } else if (byte < 62) {
+    id += (byte - 26).toString(36).toUpperCase();
+  } else if (byte > 62) {
+    id += "-";
+  } else {
+    id += "_";
   }
   return id;
-};
+}, "");
 var randomColor = { exports: {} };
 (function(module, exports) {
   (function(root, factory) {
@@ -9896,9 +9892,10 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
   new WebrtcProvider(room_id, doc2);
   const others = doc2.getMap("state");
   let sendUpdate = false;
-  addEventListener("beforeunload", () => {
+  const cleanup = () => {
     others.delete(me.id);
-  });
+  };
+  addEventListener("beforeunload", cleanup);
   setInterval(() => {
     if (sendUpdate) {
       others.set(me.id, me);
@@ -9975,5 +9972,6 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
       }
     });
   });
+  return cleanup;
 };
 export { initCursorChat };

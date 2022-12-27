@@ -68,9 +68,12 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
   
   const others: Y.Map<Cursor> = doc.getMap("state")
   let sendUpdate = false
-  addEventListener('beforeunload', () => {
+
+  const cleanup = () => {
     others.delete(me.id)
-  })
+  }
+
+  addEventListener('beforeunload', cleanup)
   setInterval(() => {
     if (sendUpdate) {
       others.set(me.id, me)
@@ -154,4 +157,6 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
       }
     })
   })
+
+  return cleanup
 }
