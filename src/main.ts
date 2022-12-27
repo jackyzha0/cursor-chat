@@ -61,7 +61,7 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
 
   room_id = room_id || `cursor-chat-room-${window.location.host + window.location.pathname}`
   const doc = new Y.Doc()
-  new WebrtcProvider(
+  const provider = new WebrtcProvider(
     room_id,
     doc
   )
@@ -71,6 +71,7 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
 
   const cleanup = () => {
     others.delete(me.id)
+    provider.disconnect()
   }
 
   addEventListener('beforeunload', cleanup)
