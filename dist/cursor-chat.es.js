@@ -9889,11 +9889,12 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
   };
   room_id = room_id || `cursor-chat-room-${window.location.host + window.location.pathname}`;
   const doc2 = new Doc();
-  new WebrtcProvider(room_id, doc2);
+  const provider = new WebrtcProvider(room_id, doc2);
   const others = doc2.getMap("state");
   let sendUpdate = false;
   const cleanup = () => {
     others.delete(me.id);
+    provider.disconnect();
   };
   addEventListener("beforeunload", cleanup);
   setInterval(() => {
