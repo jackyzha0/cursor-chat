@@ -6,15 +6,18 @@ import { PerfectCursor } from 'perfect-cursors'
 import { nanoid } from 'nanoid'
 import randomcolor from 'randomcolor'
 
-interface Cursor {
+type UserMetadata<T> = { [key: string]: T }
+
+interface Cursor<T> {
   id: string
-  color: string
   x: number
   y: number
   chat: string
+  color: string
+  userMetaData: UserMetadata<T>
 }
 
-function cursorFactory(cursor: Cursor): HTMLElement {
+export function defaultCursorRenderer<T>(cursor: Cursor<T>): HTMLElement {
   const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -43,7 +46,14 @@ function cursorFactory(cursor: Cursor): HTMLElement {
   return cursorEl;
 }
 
-export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+export const initCursorChat = <T>(
+  room_id: string = `cursor-chat-room-${window.location.host + window.location.pathname}`,
+  triggerKey: string = "/",
+  cursorDivId: string = "cursor-chat-layer",
+  chatDivId: string = "cursor-chat-box",
+  userMetaData: UserMetadata<T> = {},
+  renderCursor: <T>(cursor: Cursor<T>) => HTMLElement = defaultCursorRenderer,
+) => {
   const cursorDiv = document.getElementById(cursorDivId)!
   const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
 
@@ -51,22 +61,22 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
     throw `Couldn't find cursor-chat-related divs! Make sure DOM content is fully loaded before initializing`
   }
 
-  const me: Cursor = {
+  const me: Cursor<T> = {
     id: nanoid(),
-    color: randomcolor(),
     x: 0,
     y: 0,
-    chat: ""
+    chat: "",
+    color: randomcolor(),
+    userMetaData,
   }
 
-  room_id = room_id || `cursor-chat-room-${window.location.host + window.location.pathname}`
   const doc = new Y.Doc()
   const provider = new WebrtcProvider(
     room_id,
     doc
   )
 
-  const others: Y.Map<Cursor> = doc.getMap("state")
+  const others: Y.Map<Cursor<T>> = doc.getMap("state")
   let sendUpdate = false
 
   const cleanup = () => {
@@ -125,7 +135,7 @@ export const initCursorChat = (room_id?: string, triggerKey = "/", cursorDivId =
           case 'add':
             // make a new cursor
             const new_cursor = others.get(cursor_id)!;
-            const new_cursor_div = cursorFactory(new_cursor);
+            const new_cursor_div = renderCursor(new_cursor);
             new_cursor_div.classList.add("new")
             cursorDiv.appendChild(new_cursor_div);
             const add_point_closure = ([x, y]: number[]) => new_cursor_div.style.setProperty("transform", `translate(${x}px, ${y}px)`);

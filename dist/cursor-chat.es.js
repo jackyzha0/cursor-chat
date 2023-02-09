@@ -9846,7 +9846,7 @@ var randomColor = { exports: {} };
   });
 })(randomColor, randomColor.exports);
 var randomcolor = randomColor.exports;
-function cursorFactory(cursor) {
+function defaultCursorRenderer(cursor) {
   const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -9874,7 +9874,7 @@ function cursorFactory(cursor) {
   const cursorEl = template.content.firstChild;
   return cursorEl;
 }
-const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box") => {
+const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`, triggerKey = "/", cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box", userMetaData = {}, renderCursor = defaultCursorRenderer) => {
   const cursorDiv = document.getElementById(cursorDivId);
   const chatDiv = document.getElementById(chatDivId);
   if (!cursorDiv || !chatDiv) {
@@ -9882,12 +9882,12 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
   }
   const me = {
     id: nanoid(),
-    color: randomcolor(),
     x: 0,
     y: 0,
-    chat: ""
+    chat: "",
+    color: randomcolor(),
+    userMetaData
   };
-  room_id = room_id || `cursor-chat-room-${window.location.host + window.location.pathname}`;
   const doc2 = new Doc();
   const provider = new WebrtcProvider(room_id, doc2);
   const others = doc2.getMap("state");
@@ -9941,7 +9941,7 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
         switch (change.action) {
           case "add":
             const new_cursor = others.get(cursor_id);
-            const new_cursor_div = cursorFactory(new_cursor);
+            const new_cursor_div = renderCursor(new_cursor);
             new_cursor_div.classList.add("new");
             cursorDiv.appendChild(new_cursor_div);
             const add_point_closure = ([x, y]) => new_cursor_div.style.setProperty("transform", `translate(${x}px, ${y}px)`);
@@ -9976,4 +9976,4 @@ const initCursorChat = (room_id, triggerKey = "/", cursorDivId = "cursor-chat-la
   });
   return cleanup;
 };
-export { initCursorChat };
+export { defaultCursorRenderer, initCursorChat };
