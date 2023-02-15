@@ -46,14 +46,40 @@ export function defaultCursorRenderer<T>(cursor: Cursor<T>): HTMLElement {
   return cursorEl;
 }
 
+export interface Config<T> {
+  triggerKey: string,
+  cursorDivId: string,
+  chatDivId: string,
+  userMetaData: UserMetadata<T>,
+  renderCursor: <T>(cursor: Cursor<T>) => HTMLElement,
+  yDoc: Y.Doc,
+}
+
+export const DefaultConfig = {
+  triggerKey: "/",
+  cursorDivId: "cursor-chat-layer",
+  chatDivId: "cursor-chat-box",
+  userMetaData: {},
+  renderCursor: defaultCursorRenderer,
+  yDoc: undefined,
+}
+
 export const initCursorChat = <T>(
   room_id: string = `cursor-chat-room-${window.location.host + window.location.pathname}`,
-  triggerKey: string = "/",
-  cursorDivId: string = "cursor-chat-layer",
-  chatDivId: string = "cursor-chat-box",
-  userMetaData: UserMetadata<T> = {},
-  renderCursor: <T>(cursor: Cursor<T>) => HTMLElement = defaultCursorRenderer,
+  config: Partial<Config<T>> = {},
 ) => {
+  const {
+    triggerKey,
+    cursorDivId,
+    chatDivId,
+    userMetaData,
+    renderCursor,
+    yDoc,
+  } = {
+    ...DefaultConfig,
+    ...config
+  }
+
   const cursorDiv = document.getElementById(cursorDivId)!
   const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
 
@@ -70,18 +96,24 @@ export const initCursorChat = <T>(
     userMetaData,
   }
 
-  const doc = new Y.Doc()
-  const provider = new WebrtcProvider(
-    room_id,
-    doc
-  )
+  let doc: Y.Doc
+  let provider: Y.AbstractConnector | undefined
+  if (yDoc !== undefined) {
+    doc = yDoc
+  } else {
+    doc = new Y.Doc()
+    provider = new WebrtcProvider(
+      room_id,
+      doc
+    )
+  }
 
   const others: Y.Map<Cursor<T>> = doc.getMap("state")
   let sendUpdate = false
 
   const cleanup = () => {
     others.delete(me.id)
-    provider.disconnect()
+    provider?.destroy()
   }
 
   addEventListener('beforeunload', cleanup)
