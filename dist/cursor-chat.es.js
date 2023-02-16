@@ -138,6 +138,105 @@ try {
 }
 const varStorage = _localStorage;
 const onChange = (eventHandler) => usePolyfill || addEventListener("storage", eventHandler);
+const keys = Object.keys;
+const length$1 = (obj) => keys(obj).length;
+const every = (obj, f) => {
+  for (const key in obj) {
+    if (!f(obj[key], key)) {
+      return false;
+    }
+  }
+  return true;
+};
+const hasProperty = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const equalFlat = (a, b) => a === b || length$1(a) === length$1(b) && every(a, (val, key) => (val !== void 0 || hasProperty(b, key)) && b[key] === val);
+const callAll = (fs, args, i = 0) => {
+  try {
+    for (; i < fs.length; i++) {
+      fs[i](...args);
+    }
+  } finally {
+    if (i < fs.length) {
+      callAll(fs, args, i + 1);
+    }
+  }
+};
+const nop = () => {
+};
+const equalityStrict = (a, b) => a === b;
+const equalityDeep = (a, b) => {
+  if (a == null || b == null) {
+    return equalityStrict(a, b);
+  }
+  if (a.constructor !== b.constructor) {
+    return false;
+  }
+  if (a === b) {
+    return true;
+  }
+  switch (a.constructor) {
+    case ArrayBuffer:
+      a = new Uint8Array(a);
+      b = new Uint8Array(b);
+    case Uint8Array: {
+      if (a.byteLength !== b.byteLength) {
+        return false;
+      }
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+          return false;
+        }
+      }
+      break;
+    }
+    case Set: {
+      if (a.size !== b.size) {
+        return false;
+      }
+      for (const value of a) {
+        if (!b.has(value)) {
+          return false;
+        }
+      }
+      break;
+    }
+    case Map: {
+      if (a.size !== b.size) {
+        return false;
+      }
+      for (const key of a.keys()) {
+        if (!b.has(key) || !equalityDeep(a.get(key), b.get(key))) {
+          return false;
+        }
+      }
+      break;
+    }
+    case Object:
+      if (length$1(a) !== length$1(b)) {
+        return false;
+      }
+      for (const key in a) {
+        if (!hasProperty(a, key) || !equalityDeep(a[key], b[key])) {
+          return false;
+        }
+      }
+      break;
+    case Array:
+      if (a.length !== b.length) {
+        return false;
+      }
+      for (let i = 0; i < a.length; i++) {
+        if (!equalityDeep(a[i], b[i])) {
+          return false;
+        }
+      }
+      break;
+    default:
+      return false;
+  }
+  return true;
+};
+const isOneOf = (value, options) => options.includes(value);
 const isNode = typeof process !== "undefined" && process.release && /node|io\.js/.test(process.release.name);
 const isBrowser = typeof window !== "undefined" && !isNode;
 typeof navigator !== "undefined" ? /Mac/.test(navigator.platform) : false;
@@ -184,6 +283,8 @@ const hasParam = (name) => computeParams().has(name);
 const getVariable = (name) => isNode ? undefinedToNull(process.env[name.toUpperCase()]) : undefinedToNull(varStorage.getItem(name));
 const hasConf = (name) => hasParam("--" + name) || getVariable(name) !== null;
 hasConf("production");
+const forceColor = isNode && isOneOf({}.FORCE_COLOR, ["true", "1", "2"]);
+const supportsColor = !hasParam("no-colors") && (!isNode || process.stdout.isTTY || forceColor) && (!isNode || hasParam("color") || forceColor || getVariable("COLORTERM") !== null || (getVariable("TERM") || "").includes("color"));
 const BIT1 = 1;
 const BIT2 = 2;
 const BIT3 = 4;
@@ -195,6 +296,17 @@ const BITS5 = 31;
 const BITS6 = 63;
 const BITS7 = 127;
 const BITS31 = 2147483647;
+const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
+const isInteger = Number.isInteger || ((num) => typeof num === "number" && isFinite(num) && floor(num) === num);
+const create$3 = (s) => new Error(s);
+const methodUnimplemented = () => {
+  throw create$3("Method unimplemented");
+};
+const unexpectedCase = () => {
+  throw create$3("Unexpected case");
+};
+const errorUnexpectedEndOfArray = create$3("Unexpected end of array");
+const errorIntegerOutOfRange = create$3("Integer out of Range");
 class Decoder {
   constructor(uint8Array) {
     this.arr = uint8Array;
@@ -212,40 +324,44 @@ const readVarUint8Array = (decoder) => readUint8Array(decoder, readVarUint(decod
 const readUint8 = (decoder) => decoder.arr[decoder.pos++];
 const readVarUint = (decoder) => {
   let num = 0;
-  let len = 0;
-  while (true) {
+  let mult = 1;
+  const len = decoder.arr.length;
+  while (decoder.pos < len) {
     const r = decoder.arr[decoder.pos++];
-    num = num | (r & BITS7) << len;
-    len += 7;
+    num = num + (r & BITS7) * mult;
+    mult *= 128;
     if (r < BIT8) {
-      return num >>> 0;
+      return num;
     }
-    if (len > 35) {
-      throw new Error("Integer out of range!");
+    if (num > MAX_SAFE_INTEGER) {
+      throw errorIntegerOutOfRange;
     }
   }
+  throw errorUnexpectedEndOfArray;
 };
 const readVarInt = (decoder) => {
   let r = decoder.arr[decoder.pos++];
   let num = r & BITS6;
-  let len = 6;
+  let mult = 64;
   const sign = (r & BIT7) > 0 ? -1 : 1;
   if ((r & BIT8) === 0) {
     return sign * num;
   }
-  while (true) {
+  const len = decoder.arr.length;
+  while (decoder.pos < len) {
     r = decoder.arr[decoder.pos++];
-    num = num | (r & BITS7) << len;
-    len += 7;
+    num = num + (r & BITS7) * mult;
+    mult *= 128;
     if (r < BIT8) {
-      return sign * (num >>> 0);
+      return sign * num;
     }
-    if (len > 41) {
-      throw new Error("Integer out of range!");
+    if (num > MAX_SAFE_INTEGER) {
+      throw errorIntegerOutOfRange;
     }
   }
+  throw errorUnexpectedEndOfArray;
 };
-const readVarString = (decoder) => {
+const _readVarStringPolyfill = (decoder) => {
   let remainingLen = readVarUint(decoder);
   if (remainingLen === 0) {
     return "";
@@ -267,6 +383,8 @@ const readVarString = (decoder) => {
     return decodeURIComponent(escape(encodedString));
   }
 };
+const _readVarStringNative = (decoder) => utf8TextDecoder.decode(readVarUint8Array(decoder));
+const readVarString = utf8TextDecoder ? _readVarStringNative : _readVarStringPolyfill;
 const readFromDataView = (decoder, len) => {
   const dv = new DataView(decoder.arr.buffer, decoder.arr.byteOffset + decoder.pos, len);
   decoder.pos += len;
@@ -356,7 +474,7 @@ class IntDiffOptRleDecoder extends Decoder {
     if (this.count === 0) {
       const diff = readVarInt(this);
       const hasCount = diff & 1;
-      this.diff = diff >> 1;
+      this.diff = floor(diff / 2);
       this.count = 1;
       if (hasCount) {
         this.count = readVarUint(this) + 2;
@@ -410,7 +528,6 @@ const copyUint8Array = (uint8Array) => {
   newBuf.set(uint8Array);
   return newBuf;
 };
-const isInteger = Number.isInteger || ((num) => typeof num === "number" && isFinite(num) && floor(num) === num);
 class Encoder {
   constructor() {
     this.cpos = 0;
@@ -419,7 +536,7 @@ class Encoder {
   }
 }
 const createEncoder = () => new Encoder();
-const length$1 = (encoder) => {
+const length = (encoder) => {
   let len = encoder.cpos;
   for (let i = 0; i < encoder.bufs.length; i++) {
     len += encoder.bufs[i].length;
@@ -427,7 +544,7 @@ const length$1 = (encoder) => {
   return len;
 };
 const toUint8Array = (encoder) => {
-  const uint8arr = new Uint8Array(length$1(encoder));
+  const uint8arr = new Uint8Array(length(encoder));
   let curPos = 0;
   for (let i = 0; i < encoder.bufs.length; i++) {
     const d = encoder.bufs[i];
@@ -458,7 +575,7 @@ const writeUint8 = write;
 const writeVarUint = (encoder, num) => {
   while (num > BITS7) {
     write(encoder, BIT8 | BITS7 & num);
-    num >>>= 7;
+    num = floor(num / 128);
   }
   write(encoder, BITS7 & num);
 };
@@ -468,13 +585,26 @@ const writeVarInt = (encoder, num) => {
     num = -num;
   }
   write(encoder, (num > BITS6 ? BIT8 : 0) | (isNegative ? BIT7 : 0) | BITS6 & num);
-  num >>>= 6;
+  num = floor(num / 64);
   while (num > 0) {
     write(encoder, (num > BITS7 ? BIT8 : 0) | BITS7 & num);
-    num >>>= 7;
+    num = floor(num / 128);
   }
 };
-const writeVarString = (encoder, str) => {
+const _strBuffer = new Uint8Array(3e4);
+const _maxStrBSize = _strBuffer.length / 3;
+const _writeVarStringNative = (encoder, str) => {
+  if (str.length < _maxStrBSize) {
+    const written = utf8TextEncoder.encodeInto(str, _strBuffer).written || 0;
+    writeVarUint(encoder, written);
+    for (let i = 0; i < written; i++) {
+      write(encoder, _strBuffer[i]);
+    }
+  } else {
+    writeVarUint8Array(encoder, encodeUtf8(str));
+  }
+};
+const _writeVarStringPolyfill = (encoder, str) => {
   const encodedString = unescape(encodeURIComponent(str));
   const len = encodedString.length;
   writeVarUint(encoder, len);
@@ -482,6 +612,7 @@ const writeVarString = (encoder, str) => {
     write(encoder, encodedString.codePointAt(i));
   }
 };
+const writeVarString = utf8TextEncoder && utf8TextEncoder.encodeInto ? _writeVarStringNative : _writeVarStringPolyfill;
 const writeUint8Array = (encoder, uint8Array) => {
   const bufferLen = encoder.cbuf.length;
   const cpos = encoder.cpos;
@@ -521,7 +652,7 @@ const writeAny = (encoder, data) => {
       writeVarString(encoder, data);
       break;
     case "number":
-      if (isInteger(data) && data <= BITS31) {
+      if (isInteger(data) && abs(data) <= BITS31) {
         write(encoder, 125);
         writeVarInt(encoder, data);
       } else if (isFloat32(data)) {
@@ -616,7 +747,7 @@ class UintOptRleEncoder {
 }
 const flushIntDiffOptRleEncoder = (encoder) => {
   if (encoder.count > 0) {
-    const encodedDiff = encoder.diff << 1 | (encoder.count === 1 ? 0 : 1);
+    const encodedDiff = encoder.diff * 2 + (encoder.count === 1 ? 0 : 1);
     writeVarInt(encoder.encoder, encodedDiff);
     if (encoder.count > 1) {
       writeVarUint(encoder.encoder, encoder.count - 2);
@@ -688,114 +819,9 @@ const uint32 = () => new Uint32Array(cryptoRandomBuffer(4))[0];
 const uuidv4Template = [1e7] + -1e3 + -4e3 + -8e3 + -1e11;
 const uuidv4 = () => uuidv4Template.replace(/[018]/g, (c) => (c ^ uint32() & 15 >> c / 4).toString(16));
 const getUnixTime = Date.now;
-const create$3 = (f) => new Promise(f);
+const create$2 = (f) => new Promise(f);
 const reject = (reason) => Promise.reject(reason);
 const resolve = (res) => Promise.resolve(res);
-const create$2 = (s) => new Error(s);
-const methodUnimplemented = () => {
-  throw create$2("Method unimplemented");
-};
-const unexpectedCase = () => {
-  throw create$2("Unexpected case");
-};
-const keys = Object.keys;
-const length = (obj) => keys(obj).length;
-const every = (obj, f) => {
-  for (const key in obj) {
-    if (!f(obj[key], key)) {
-      return false;
-    }
-  }
-  return true;
-};
-const hasProperty = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-const equalFlat = (a, b) => a === b || length(a) === length(b) && every(a, (val, key) => (val !== void 0 || hasProperty(b, key)) && b[key] === val);
-const callAll = (fs, args, i = 0) => {
-  try {
-    for (; i < fs.length; i++) {
-      fs[i](...args);
-    }
-  } finally {
-    if (i < fs.length) {
-      callAll(fs, args, i + 1);
-    }
-  }
-};
-const nop = () => {
-};
-const equalityStrict = (a, b) => a === b;
-const equalityDeep = (a, b) => {
-  if (a == null || b == null) {
-    return equalityStrict(a, b);
-  }
-  if (a.constructor !== b.constructor) {
-    return false;
-  }
-  if (a === b) {
-    return true;
-  }
-  switch (a.constructor) {
-    case ArrayBuffer:
-      a = new Uint8Array(a);
-      b = new Uint8Array(b);
-    case Uint8Array: {
-      if (a.byteLength !== b.byteLength) {
-        return false;
-      }
-      for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) {
-          return false;
-        }
-      }
-      break;
-    }
-    case Set: {
-      if (a.size !== b.size) {
-        return false;
-      }
-      for (const value of a) {
-        if (!b.has(value)) {
-          return false;
-        }
-      }
-      break;
-    }
-    case Map: {
-      if (a.size !== b.size) {
-        return false;
-      }
-      for (const key of a.keys()) {
-        if (!b.has(key) || !equalityDeep(a.get(key), b.get(key))) {
-          return false;
-        }
-      }
-      break;
-    }
-    case Object:
-      if (length(a) !== length(b)) {
-        return false;
-      }
-      for (const key in a) {
-        if (!hasProperty(a, key) || !equalityDeep(a[key], b[key])) {
-          return false;
-        }
-      }
-      break;
-    case Array:
-      if (a.length !== b.length) {
-        return false;
-      }
-      for (let i = 0; i < a.length; i++) {
-        if (!equalityDeep(a[i], b[i])) {
-          return false;
-        }
-      }
-      break;
-    default:
-      return false;
-  }
-  return true;
-};
 const create$1 = Symbol;
 class Pair {
   constructor(left, right) {
@@ -882,6 +908,36 @@ const computeBrowserLoggingArgs = (args) => {
   }
   return logArgs;
 };
+const computeNoColorLoggingArgs = (args) => {
+  const strBuilder = [];
+  const logArgs = [];
+  let i = 0;
+  for (; i < args.length; i++) {
+    const arg = args[i];
+    const style2 = _nodeStyleMap[arg];
+    if (style2 === void 0) {
+      if (arg.constructor === String || arg.constructor === Number) {
+        strBuilder.push(arg);
+      } else {
+        break;
+      }
+    }
+  }
+  if (i > 0) {
+    logArgs.push(strBuilder.join(""));
+  }
+  for (; i < args.length; i++) {
+    const arg = args[i];
+    if (!(arg instanceof Symbol)) {
+      if (arg.constructor === Object) {
+        logArgs.push(JSON.stringify(arg));
+      } else {
+        logArgs.push(arg);
+      }
+    }
+  }
+  return logArgs;
+};
 const computeNodeLoggingArgs = (args) => {
   const strBuilder = [];
   const logArgs = [];
@@ -911,12 +967,12 @@ const computeNodeLoggingArgs = (args) => {
   }
   return logArgs;
 };
-const computeLoggingArgs = isNode ? computeNodeLoggingArgs : computeBrowserLoggingArgs;
+const computeLoggingArgs = supportsColor ? isNode ? computeNodeLoggingArgs : computeBrowserLoggingArgs : computeNoColorLoggingArgs;
 const print = (...args) => {
   console.log(...computeLoggingArgs(args));
   vconsoles.forEach((vc) => vc.print(args));
 };
-const vconsoles = /* @__PURE__ */ new Set();
+const vconsoles = create$4();
 const loggingColors = [GREEN, PURPLE, ORANGE, BLUE];
 let nextColor = 0;
 let lastLoggingTime = getUnixTime();
@@ -1156,12 +1212,32 @@ class Doc extends Observable {
     this.autoLoad = autoLoad;
     this.meta = meta;
     this.isLoaded = false;
-    this.whenLoaded = create$3((resolve2) => {
+    this.isSynced = false;
+    this.whenLoaded = create$2((resolve2) => {
       this.on("load", () => {
         this.isLoaded = true;
         resolve2(this);
       });
     });
+    const provideSyncedPromise = () => create$2((resolve2) => {
+      const eventHandler = (isSynced) => {
+        if (isSynced === void 0 || isSynced === true) {
+          this.off("sync", eventHandler);
+          resolve2();
+        }
+      };
+      this.on("sync", eventHandler);
+    });
+    this.on("sync", (isSynced) => {
+      if (isSynced === false && this.isSynced) {
+        this.whenSynced = provideSyncedPromise();
+      }
+      this.isSynced = isSynced === void 0 || isSynced === true;
+      if (!this.isLoaded) {
+        this.emit("load", []);
+      }
+    });
+    this.whenSynced = provideSyncedPromise();
   }
   load() {
     const item = this._item;
@@ -2062,7 +2138,6 @@ const cleanupTransactions = (transactionCleanups, i) => {
     try {
       sortAndMergeDeleteSet(ds);
       transaction.afterState = getStateVector(transaction.doc.store);
-      doc2._transaction = null;
       doc2.emit("beforeObserverCalls", [transaction, doc2]);
       const fs = [];
       transaction.changed.forEach((subs, itemtype) => fs.push(() => {
@@ -2166,8 +2241,12 @@ const transact = (doc2, f, origin = null, local = true) => {
   try {
     f(doc2._transaction);
   } finally {
-    if (initialCall && transactionCleanups[0] === doc2._transaction) {
-      cleanupTransactions(transactionCleanups, 0);
+    if (initialCall) {
+      const finishCleanup = doc2._transaction === transactionCleanups[0];
+      doc2._transaction = null;
+      if (finishCleanup) {
+        cleanupTransactions(transactionCleanups, 0);
+      }
     }
   }
 };
@@ -2217,7 +2296,7 @@ const popStackItem = (undoManager, stack, eventType) => {
         }
       });
       itemsToRedo.forEach((struct) => {
-        performedChange = redoItem(transaction, struct, itemsToRedo, stackItem.insertions) !== null || performedChange;
+        performedChange = redoItem(transaction, struct, itemsToRedo, stackItem.insertions, undoManager.ignoreRemoteMapChanges) !== null || performedChange;
       });
       for (let i = itemsToDelete.length - 1; i >= 0; i--) {
         const item = itemsToDelete[i];
@@ -2242,21 +2321,31 @@ const popStackItem = (undoManager, stack, eventType) => {
   return result;
 };
 class UndoManager extends Observable {
-  constructor(typeScope, { captureTimeout = 500, deleteFilter = () => true, trackedOrigins = /* @__PURE__ */ new Set([null]) } = {}) {
+  constructor(typeScope, {
+    captureTimeout = 500,
+    captureTransaction = (tr) => true,
+    deleteFilter = () => true,
+    trackedOrigins = /* @__PURE__ */ new Set([null]),
+    ignoreRemoteMapChanges = false,
+    doc: doc2 = isArray(typeScope) ? typeScope[0].doc : typeScope.doc
+  } = {}) {
     super();
     this.scope = [];
     this.addToScope(typeScope);
     this.deleteFilter = deleteFilter;
     trackedOrigins.add(this);
     this.trackedOrigins = trackedOrigins;
+    this.captureTransaction = captureTransaction;
     this.undoStack = [];
     this.redoStack = [];
     this.undoing = false;
     this.redoing = false;
-    this.doc = this.scope[0].doc;
+    this.doc = doc2;
     this.lastChange = 0;
-    this.doc.on("afterTransaction", (transaction) => {
-      if (!this.scope.some((type) => transaction.changedParentTypes.has(type)) || !this.trackedOrigins.has(transaction.origin) && (!transaction.origin || !this.trackedOrigins.has(transaction.origin.constructor))) {
+    this.ignoreRemoteMapChanges = ignoreRemoteMapChanges;
+    this.captureTimeout = captureTimeout;
+    this.afterTransactionHandler = (transaction) => {
+      if (!this.captureTransaction(transaction) || !this.scope.some((type) => transaction.changedParentTypes.has(type)) || !this.trackedOrigins.has(transaction.origin) && (!transaction.origin || !this.trackedOrigins.has(transaction.origin.constructor))) {
         return;
       }
       const undoing = this.undoing;
@@ -2277,7 +2366,7 @@ class UndoManager extends Observable {
       });
       const now = getUnixTime();
       let didAdd = false;
-      if (now - this.lastChange < captureTimeout && stack.length > 0 && !undoing && !redoing) {
+      if (this.lastChange > 0 && now - this.lastChange < this.captureTimeout && stack.length > 0 && !undoing && !redoing) {
         const lastOp = stack[stack.length - 1];
         lastOp.deletions = mergeDeleteSets([lastOp.deletions, transaction.deleteSet]);
         lastOp.insertions = mergeDeleteSets([lastOp.insertions, insertions]);
@@ -2299,7 +2388,8 @@ class UndoManager extends Observable {
       } else {
         this.emit("stack-item-updated", changeEvent);
       }
-    });
+    };
+    this.doc.on("afterTransaction", this.afterTransactionHandler);
     this.doc.on("destroy", () => {
       this.destroy();
     });
@@ -2311,6 +2401,12 @@ class UndoManager extends Observable {
         this.scope.push(ytype);
       }
     });
+  }
+  addTrackedOrigin(origin) {
+    this.trackedOrigins.add(origin);
+  }
+  removeTrackedOrigin(origin) {
+    this.trackedOrigins.delete(origin);
   }
   clear(clearUndoStack = true, clearRedoStack = true) {
     if (clearUndoStack && this.canUndo() || clearRedoStack && this.canRedo()) {
@@ -2355,6 +2451,11 @@ class UndoManager extends Observable {
   }
   canRedo() {
     return this.redoStack.length > 0;
+  }
+  destroy() {
+    this.trackedOrigins.delete(this);
+    this.doc.off("afterTransaction", this.afterTransactionHandler);
+    super.destroy();
   }
 }
 function* lazyStructReaderGenerator(decoder) {
@@ -2857,7 +2958,7 @@ class AbstractType {
   clone() {
     throw methodUnimplemented();
   }
-  _write(encoder) {
+  _write(_encoder) {
   }
   get _first() {
     let n = this._start;
@@ -2866,7 +2967,7 @@ class AbstractType {
     }
     return n;
   }
-  _callObserver(transaction, parentSubs) {
+  _callObserver(transaction, _parentSubs) {
     if (!transaction.local && this._searchMarker) {
       this._searchMarker.length = 0;
     }
@@ -3048,7 +3149,7 @@ const typeListInsertGenericsAfter = (transaction, parent, referenceItem, content
   });
   packJsonContent();
 };
-const lengthExceeded = create$2("Length exceeded!");
+const lengthExceeded = create$3("Length exceeded!");
 const typeListInsertGenerics = (transaction, parent, index, content) => {
   if (index > parent._length) {
     throw lengthExceeded;
@@ -3281,7 +3382,7 @@ class YArray extends AbstractType {
     encoder.writeTypeRef(YArrayRefID);
   }
 }
-const readYArray = (decoder) => new YArray();
+const readYArray = (_decoder) => new YArray();
 class YMapEvent extends YEvent {
   constructor(ymap, transaction, subs) {
     super(ymap, transaction);
@@ -3341,13 +3442,11 @@ class YMap extends AbstractType {
     return iteratorMap(createMapIterator(this._map), (v) => [v[0], v[1].content.getContent()[v[1].length - 1]]);
   }
   forEach(f) {
-    const map2 = {};
     this._map.forEach((item, key) => {
       if (!item.deleted) {
         f(item.content.getContent()[item.length - 1], key, this);
       }
     });
-    return map2;
   }
   [Symbol.iterator]() {
     return this.entries();
@@ -3380,7 +3479,7 @@ class YMap extends AbstractType {
   clear() {
     if (this.doc !== null) {
       transact(this.doc, (transaction) => {
-        this.forEach(function(value, key, map2) {
+        this.forEach(function(_value, key, map2) {
           typeMapDelete(transaction, map2, key);
         });
       });
@@ -3392,7 +3491,7 @@ class YMap extends AbstractType {
     encoder.writeTypeRef(YMapRefID);
   }
 }
-const readYMap = (decoder) => new YMap();
+const readYMap = (_decoder) => new YMap();
 const equalAttrs = (a, b) => a === b || typeof a === "object" && typeof b === "object" && a && b && equalFlat(a, b);
 class ItemTextListPosition {
   constructor(left, right, index, currentAttributes) {
@@ -3511,7 +3610,7 @@ const insertAttributes = (transaction, parent, currPos, attributes) => {
   return negatedAttributes;
 };
 const insertText = (transaction, parent, currPos, text, attributes) => {
-  currPos.currentAttributes.forEach((val, key) => {
+  currPos.currentAttributes.forEach((_val, key) => {
     if (attributes[key] === void 0) {
       attributes[key] = null;
     }
@@ -3537,32 +3636,38 @@ const formatText = (transaction, parent, currPos, length2, attributes) => {
   const ownClientId = doc2.clientID;
   minimizeAttributeChanges(currPos, attributes);
   const negatedAttributes = insertAttributes(transaction, parent, currPos, attributes);
-  while (currPos.right !== null && (length2 > 0 || currPos.right.content.constructor === ContentFormat)) {
-    if (!currPos.right.deleted) {
-      switch (currPos.right.content.constructor) {
-        case ContentFormat: {
-          const { key, value } = currPos.right.content;
-          const attr = attributes[key];
-          if (attr !== void 0) {
-            if (equalAttrs(attr, value)) {
-              negatedAttributes.delete(key);
+  iterationLoop:
+    while (currPos.right !== null && (length2 > 0 || negatedAttributes.size > 0 && (currPos.right.deleted || currPos.right.content.constructor === ContentFormat))) {
+      if (!currPos.right.deleted) {
+        switch (currPos.right.content.constructor) {
+          case ContentFormat: {
+            const { key, value } = currPos.right.content;
+            const attr = attributes[key];
+            if (attr !== void 0) {
+              if (equalAttrs(attr, value)) {
+                negatedAttributes.delete(key);
+              } else {
+                if (length2 === 0) {
+                  break iterationLoop;
+                }
+                negatedAttributes.set(key, value);
+              }
+              currPos.right.delete(transaction);
             } else {
-              negatedAttributes.set(key, value);
+              currPos.currentAttributes.set(key, value);
             }
-            currPos.right.delete(transaction);
+            break;
           }
-          break;
+          default:
+            if (length2 < currPos.right.length) {
+              getItemCleanStart(transaction, createID(currPos.right.id.client, currPos.right.id.clock + length2));
+            }
+            length2 -= currPos.right.length;
+            break;
         }
-        default:
-          if (length2 < currPos.right.length) {
-            getItemCleanStart(transaction, createID(currPos.right.id.client, currPos.right.id.clock + length2));
-          }
-          length2 -= currPos.right.length;
-          break;
       }
+      currPos.forward();
     }
-    currPos.forward();
-  }
   if (length2 > 0) {
     let newlines = "";
     for (; length2 > 0; length2--) {
@@ -3594,11 +3699,16 @@ const cleanupFormattingGap = (transaction, start, curr, startAttributes, currAtt
       switch (content.constructor) {
         case ContentFormat: {
           const { key, value } = content;
-          if ((endAttributes.get(key) || null) !== value || (startAttributes.get(key) || null) === value) {
+          const startAttrValue = startAttributes.get(key) || null;
+          if ((endAttributes.get(key) || null) !== value || startAttrValue === value) {
             start.delete(transaction);
             cleanups++;
             if (!reachedEndOfCurr && (currAttributes.get(key) || null) === value && (startAttributes.get(key) || null) !== value) {
-              currAttributes.delete(key);
+              if (startAttrValue === null) {
+                currAttributes.delete(key);
+              } else {
+                currAttributes.set(key, startAttrValue);
+              }
             }
           }
           break;
@@ -4016,12 +4126,12 @@ class YText extends AbstractType {
             case ContentString: {
               const cur = currentAttributes.get("ychange");
               if (snapshot !== void 0 && !isVisible(n, snapshot)) {
-                if (cur === void 0 || cur.user !== n.id.client || cur.state !== "removed") {
+                if (cur === void 0 || cur.user !== n.id.client || cur.type !== "removed") {
                   packStr();
                   currentAttributes.set("ychange", computeYChange ? computeYChange("removed", n.id) : { type: "removed" });
                 }
               } else if (prevSnapshot !== void 0 && !isVisible(n, prevSnapshot)) {
-                if (cur === void 0 || cur.user !== n.id.client || cur.state !== "added") {
+                if (cur === void 0 || cur.user !== n.id.client || cur.type !== "added") {
                   packStr();
                   currentAttributes.set("ychange", computeYChange ? computeYChange("added", n.id) : { type: "added" });
                 }
@@ -4059,7 +4169,7 @@ class YText extends AbstractType {
         n = n.right;
       }
       packStr();
-    }, splitSnapshotAffectedStructs);
+    }, "cleanup");
     return ops;
   }
   insert(index, text, attributes) {
@@ -4144,14 +4254,14 @@ class YText extends AbstractType {
   getAttribute(attributeName) {
     return typeMapGet(this, attributeName);
   }
-  getAttributes(snapshot) {
+  getAttributes() {
     return typeMapGetAll(this);
   }
   _write(encoder) {
     encoder.writeTypeRef(YTextRefID);
   }
 }
-const readYText = (decoder) => new YText();
+const readYText = (_decoder) => new YText();
 class YXmlTreeWalker {
   constructor(root, f = () => true) {
     this._filter = f;
@@ -4272,7 +4382,7 @@ class YXmlFragment extends AbstractType {
       const pc = this._prelimContent;
       const index = ref === null ? 0 : pc.findIndex((el) => el === ref) + 1;
       if (index === 0 && ref !== null) {
-        throw create$2("Reference item not found");
+        throw create$3("Reference item not found");
       }
       pc.splice(index, 0, ...content);
     }
@@ -4301,11 +4411,14 @@ class YXmlFragment extends AbstractType {
   slice(start = 0, end = this.length) {
     return typeListSlice(this, start, end);
   }
+  forEach(f) {
+    typeListForEach(this, f);
+  }
   _write(encoder) {
     encoder.writeTypeRef(YXmlFragmentRefID);
   }
 }
-const readYXmlFragment = (decoder) => new YXmlFragment();
+const readYXmlFragment = (_decoder) => new YXmlFragment();
 class YXmlElement extends YXmlFragment {
   constructor(nodeName = "UNDEFINED") {
     super();
@@ -4380,7 +4493,7 @@ class YXmlElement extends YXmlFragment {
   hasAttribute(attributeName) {
     return typeMapHas(this, attributeName);
   }
-  getAttributes(snapshot) {
+  getAttributes() {
     return typeMapGetAll(this);
   }
   toDOM(_document = document, hooks = {}, binding) {
@@ -5054,7 +5167,7 @@ const splitItem = (transaction, leftItem, diff) => {
   leftItem.length = diff;
   return rightItem;
 };
-const redoItem = (transaction, item, redoitems, itemsToDelete) => {
+const redoItem = (transaction, item, redoitems, itemsToDelete, ignoreRemoteMapChanges) => {
   const doc2 = transaction.doc;
   const store = doc2.store;
   const ownClientID = doc2.clientID;
@@ -5066,7 +5179,7 @@ const redoItem = (transaction, item, redoitems, itemsToDelete) => {
   let left = null;
   let right;
   if (parentItem !== null && parentItem.deleted === true) {
-    if (parentItem.redone === null && (!redoitems.has(parentItem) || redoItem(transaction, parentItem, redoitems, itemsToDelete) === null)) {
+    if (parentItem.redone === null && (!redoitems.has(parentItem) || redoItem(transaction, parentItem, redoitems, itemsToDelete, ignoreRemoteMapChanges) === null)) {
       return null;
     }
     while (parentItem.redone !== null) {
@@ -5101,16 +5214,13 @@ const redoItem = (transaction, item, redoitems, itemsToDelete) => {
     }
   } else {
     right = null;
-    if (item.right) {
+    if (item.right && !ignoreRemoteMapChanges) {
       left = item;
       while (left !== null && left.right !== null && isDeleted(itemsToDelete, left.right.id)) {
         left = left.right;
       }
       while (left !== null && left.redone !== null) {
         left = getItemCleanStart(transaction, left.redone);
-      }
-      if (left === null || left.parent._item !== parentItem) {
-        return null;
       }
       if (left && left.right !== null) {
         return null;
@@ -5442,10 +5552,10 @@ class Skip extends AbstractStruct {
     return null;
   }
 }
-const glo = typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : {};
+const glo = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : {};
 const importIdentifier = "__ $YJS$ __";
 if (glo[importIdentifier] === true) {
-  console.warn("Yjs was already imported. Importing different versions of Yjs often leads to issues.");
+  console.error("Yjs was already imported. This breaks constructor checks and will lead to issues! - https://github.com/yjs/yjs/issues/438");
 }
 glo[importIdentifier] = true;
 const reconnectTimeoutBase = 1200;
@@ -5559,20 +5669,31 @@ class LocalStoragePolyfill {
 }
 const BC = typeof BroadcastChannel === "undefined" ? LocalStoragePolyfill : BroadcastChannel;
 const getChannel = (room) => setIfUndefined(channels, room, () => {
-  const subs = /* @__PURE__ */ new Set();
+  const subs = create$4();
   const bc = new BC(room);
-  bc.onmessage = (e) => subs.forEach((sub) => sub(e.data));
+  bc.onmessage = (e) => subs.forEach((sub) => sub(e.data, "broadcastchannel"));
   return {
     bc,
     subs
   };
 });
-const subscribe = (room, f) => getChannel(room).subs.add(f);
-const unsubscribe = (room, f) => getChannel(room).subs.delete(f);
-const publish = (room, data) => {
+const subscribe = (room, f) => {
+  getChannel(room).subs.add(f);
+  return f;
+};
+const unsubscribe = (room, f) => {
+  const channel = getChannel(room);
+  const unsubscribed = channel.subs.delete(f);
+  if (unsubscribed && channel.subs.size === 0) {
+    channel.bc.close();
+    channels.delete(room);
+  }
+  return unsubscribed;
+};
+const publish = (room, data, origin = null) => {
   const c = getChannel(room);
   c.bc.postMessage(data);
-  c.subs.forEach((sub) => sub(data));
+  c.subs.forEach((sub) => sub(data, origin));
 };
 const createMutex = () => {
   let token = true;
@@ -8741,7 +8862,7 @@ const decrypt = (data, key) => {
   const dataDecoder = createDecoder(data);
   const algorithm = readVarString(dataDecoder);
   if (algorithm !== "AES-GCM") {
-    reject(create$2("Unknown encryption algorithm"));
+    reject(create$3("Unknown encryption algorithm"));
   }
   const iv = readVarUint8Array(dataDecoder);
   const cipher = readVarUint8Array(dataDecoder);
@@ -9044,7 +9165,7 @@ class Room {
 }
 const openRoom = (doc2, provider, name, key) => {
   if (rooms.has(name)) {
-    throw create$2(`A Yjs Doc connected to room "${name}" already exists!`);
+    throw create$3(`A Yjs Doc connected to room "${name}" already exists!`);
   }
   const room = new Room(doc2, provider, name, key);
   rooms.set(name, room);
