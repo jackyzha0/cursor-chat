@@ -9874,7 +9874,23 @@ function defaultCursorRenderer(cursor) {
   const cursorEl = template.content.firstChild;
   return cursorEl;
 }
-const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`, triggerKey = "/", cursorDivId = "cursor-chat-layer", chatDivId = "cursor-chat-box", userMetaData = {}, renderCursor = defaultCursorRenderer) => {
+const DefaultConfig = {
+  triggerKey: "/",
+  cursorDivId: "cursor-chat-layer",
+  chatDivId: "cursor-chat-box",
+  userMetaData: {},
+  renderCursor: defaultCursorRenderer,
+  yDoc: void 0
+};
+const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`, config = {}) => {
+  const {
+    triggerKey,
+    cursorDivId,
+    chatDivId,
+    userMetaData,
+    renderCursor,
+    yDoc
+  } = __spreadValues(__spreadValues({}, DefaultConfig), config);
   const cursorDiv = document.getElementById(cursorDivId);
   const chatDiv = document.getElementById(chatDivId);
   if (!cursorDiv || !chatDiv) {
@@ -9888,13 +9904,19 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
     color: randomcolor(),
     userMetaData
   };
-  const doc2 = new Doc();
-  const provider = new WebrtcProvider(room_id, doc2);
+  let doc2;
+  let provider;
+  if (yDoc !== void 0) {
+    doc2 = yDoc;
+  } else {
+    doc2 = new Doc();
+    provider = new WebrtcProvider(room_id, doc2);
+  }
   const others = doc2.getMap("state");
   let sendUpdate = false;
   const cleanup = () => {
     others.delete(me.id);
-    provider.disconnect();
+    provider == null ? void 0 : provider.destroy();
   };
   addEventListener("beforeunload", cleanup);
   setInterval(() => {
@@ -9976,4 +9998,4 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
   });
   return cleanup;
 };
-export { defaultCursorRenderer, initCursorChat };
+export { DefaultConfig, defaultCursorRenderer, initCursorChat };
