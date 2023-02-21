@@ -53,7 +53,7 @@ export interface Config<T> {
   userMetaData: UserMetadata<T>;
   renderCursor: <T>(cursor: Cursor<T>) => HTMLElement;
   yDoc: Y.Doc;
-  color?: string;
+  color: string;
 }
 
 export const DefaultConfig = {
