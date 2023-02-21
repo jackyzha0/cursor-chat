@@ -47,12 +47,13 @@ export function defaultCursorRenderer<T>(cursor: Cursor<T>): HTMLElement {
 }
 
 export interface Config<T> {
-  triggerKey: string,
-  cursorDivId: string,
-  chatDivId: string,
-  userMetaData: UserMetadata<T>,
-  renderCursor: <T>(cursor: Cursor<T>) => HTMLElement,
-  yDoc: Y.Doc,
+  triggerKey: string;
+  cursorDivId: string;
+  chatDivId: string;
+  userMetaData: UserMetadata<T>;
+  renderCursor: <T>(cursor: Cursor<T>) => HTMLElement;
+  yDoc: Y.Doc;
+  color: string;
 }
 
 export const DefaultConfig = {
@@ -62,7 +63,8 @@ export const DefaultConfig = {
   userMetaData: {},
   renderCursor: defaultCursorRenderer,
   yDoc: undefined,
-}
+  color: undefined,
+};
 
 export const initCursorChat = <T>(
   room_id: string = `cursor-chat-room-${window.location.host + window.location.pathname}`,
@@ -74,6 +76,7 @@ export const initCursorChat = <T>(
     chatDivId,
     userMetaData,
     renderCursor,
+    color,
     yDoc,
   } = {
     ...DefaultConfig,
@@ -92,7 +95,7 @@ export const initCursorChat = <T>(
     x: 0,
     y: 0,
     chat: "",
-    color: randomcolor(),
+    color: color ?? randomcolor(),
     userMetaData,
   }
 
