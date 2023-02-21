@@ -10001,7 +10001,8 @@ const DefaultConfig = {
   chatDivId: "cursor-chat-box",
   userMetaData: {},
   renderCursor: defaultCursorRenderer,
-  yDoc: void 0
+  yDoc: void 0,
+  color: void 0
 };
 const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`, config = {}) => {
   const {
@@ -10010,6 +10011,7 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
     chatDivId,
     userMetaData,
     renderCursor,
+    color,
     yDoc
   } = __spreadValues(__spreadValues({}, DefaultConfig), config);
   const cursorDiv = document.getElementById(cursorDivId);
@@ -10022,7 +10024,7 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
     x: 0,
     y: 0,
     chat: "",
-    color: randomcolor(),
+    color: color != null ? color : randomcolor(),
     userMetaData
   };
   let doc2;

@@ -18,6 +18,7 @@ export interface Config<T> {
     userMetaData: UserMetadata<T>;
     renderCursor: <T>(cursor: Cursor<T>) => HTMLElement;
     yDoc: Y.Doc;
+    color: string;
 }
 export declare const DefaultConfig: {
     triggerKey: string;
@@ -26,6 +27,7 @@ export declare const DefaultConfig: {
     userMetaData: {};
     renderCursor: typeof defaultCursorRenderer;
     yDoc: undefined;
+    color: undefined;
 };
 export declare const initCursorChat: <T>(room_id?: string, config?: Partial<Config<T>>) => () => void;
 export {};
