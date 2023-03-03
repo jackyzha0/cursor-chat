@@ -17,11 +17,12 @@ interface Cursor<T> {
   userMetaData: UserMetadata<T>
 }
 
-export function defaultCursorRenderer<T>(cursor: Cursor<T>): HTMLElement {
-  const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
-    <svg
+function getSvgForCursor(color: string) {
+  return `<svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 35 35"
+      viewBox="13 9 35 35"
+      width="36"
+      height="36"
       fill="none"
       fillRule="evenodd"
     >
@@ -33,20 +34,27 @@ export function defaultCursorRenderer<T>(cursor: Cursor<T>): HTMLElement {
         <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
         <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
       </g>
-      <g fill="${cursor.color}">
+      <g fill="${color}">
         <path d="m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" />
         <path d="m13 10.814v11.188l2.969-2.866.428-.139h4.768z" />
       </g>
-    </svg>
-    <p id="chat_${cursor.id}" class="chat" style="background-color: ${cursor.color}">${cursor.chat}</p>
+    </svg>`;
+}
+
+export function defaultCursorRenderer<T>(cursor: Cursor<T>): HTMLElement {
+  const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
+    ${getSvgForCursor(cursor.color)}
+    <p id="chat_${cursor.id}" class="chat" style="background-color: ${
+    cursor.color
+  }">${cursor.chat}</p>
   </div>`;
-  const template = document.createElement('template');
+  const template = document.createElement("template");
   template.innerHTML = htmlFragment;
   const cursorEl = template.content.firstChild as HTMLElement;
   return cursorEl;
 }
 
-export interface Config<T> {
+export interface Config<T = any> {
   triggerKey: string;
   cursorDivId: string;
   chatDivId: string;
@@ -54,6 +62,7 @@ export interface Config<T> {
   renderCursor: <T>(cursor: Cursor<T>) => HTMLElement;
   yDoc: Y.Doc;
   color: string;
+  shouldChangeUserCursor: boolean;
 }
 
 export const DefaultConfig = {
@@ -64,7 +73,22 @@ export const DefaultConfig = {
   renderCursor: defaultCursorRenderer,
   yDoc: undefined,
   color: undefined,
+  shouldChangeUserCursor: undefined,
 };
+
+// from: https://github.com/yoksel/url-encoder/blob/master/src/js/script.js
+const symbols = /[\r\n%#()<>?[\\\]^`{|}]/g;
+function encodeSVG(svgData: string) {
+  // Use single quotes instead of double to avoid encoding.
+  svgData = svgData.replace(/"/g, `'`);
+
+  svgData = svgData.replace(/>\s{1,}</g, `><`);
+  svgData = svgData.replace(/\s{2,}/g, ` `);
+
+  // Using encodeURIComponent() as replacement function
+  // allows to keep result code readable
+  return svgData.replace(symbols, encodeURIComponent);
+}
 
 export const initCursorChat = <T>(
   room_id: string = `cursor-chat-room-${window.location.host + window.location.pathname}`,
@@ -78,10 +102,11 @@ export const initCursorChat = <T>(
     renderCursor,
     color,
     yDoc,
+    shouldChangeUserCursor,
   } = {
     ...DefaultConfig,
-    ...config
-  }
+    ...config,
+  };
 
   const cursorDiv = document.getElementById(cursorDivId)!
   const chatDiv = document.getElementById(chatDivId)! as HTMLInputElement
@@ -113,6 +138,13 @@ export const initCursorChat = <T>(
 
   const others: Y.Map<Cursor<T>> = doc.getMap("state")
   let sendUpdate = false
+  
+  if (shouldChangeUserCursor) {
+    const userCursorSvgEncoded = encodeSVG(
+      getSvgForCursor(me.color)
+    );
+    document.documentElement.style.cursor = `url("data:image/svg+xml,${userCursorSvgEncoded}"), auto`;
+  }
 
   const cleanup = () => {
     others.delete(me.id)
