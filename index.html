@@ -4,33 +4,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cursor Chat Demo</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="cursor-chat-layer">
-      <input type="text" id="cursor-chat-box">
+      <input type="text" id="cursor-chat-box" />
     </div>
     <div id="app">
       <h1>Cursor Chat</h1>
-      <p>A small library by <a href="https://jzhao.xyz">Jacky</a> for digital co-existing + presence :) Press <code>/</code> to start chatting and <code>esc</code> to clear your bubble!</p>
+      <p>
+        A small library by <a href="https://jzhao.xyz">Jacky</a> for digital
+        co-existing + presence :) Press <code>/</code> to start chatting and
+        <code>esc</code> to clear your bubble!
+      </p>
       <p><a href="https://github.com/jackyzha0/cursor-chat">View Source</a></p>
     </div>
     <script type="module">
-      import { initCursorChat } from './src/main.ts'
-      initCursorChat("demo-room")
+      import { initCursorChat } from "./src/main.ts";
+      initCursorChat("demo-room", { shouldChangeUserCursor: true });
     </script>
   </body>
   <style>
-  #app {
-    font-family: Inter, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    position: absolute; 
-    left: 0; 
-    right: 0; 
-    margin: 35vh auto;
-    height: 30vh;
-    width: 30vw;
-  }
+    #app {
+      font-family: Inter, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      position: absolute;
+      left: 0;
+      right: 0;
+      margin: 35vh auto;
+      height: 30vh;
+      width: 30vw;
+    }
   </style>
 </html>
