@@ -9967,11 +9967,12 @@ var randomColor = { exports: {} };
   });
 })(randomColor, randomColor.exports);
 var randomcolor = randomColor.exports;
-function defaultCursorRenderer(cursor) {
-  const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
-    <svg
+function getSvgForCursor(color) {
+  return `<svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 35 35"
+      viewBox="13 9 35 35"
+      width="36"
+      height="36"
       fill="none"
       fillRule="evenodd"
     >
@@ -9983,11 +9984,15 @@ function defaultCursorRenderer(cursor) {
         <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
         <path d="m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" />
       </g>
-      <g fill="${cursor.color}">
+      <g fill="${color}">
         <path d="m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" />
         <path d="m13 10.814v11.188l2.969-2.866.428-.139h4.768z" />
       </g>
-    </svg>
+    </svg>`;
+}
+function defaultCursorRenderer(cursor) {
+  const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
+    ${getSvgForCursor(cursor.color)}
     <p id="chat_${cursor.id}" class="chat" style="background-color: ${cursor.color}">${cursor.chat}</p>
   </div>`;
   const template = document.createElement("template");
@@ -10002,8 +10007,16 @@ const DefaultConfig = {
   userMetaData: {},
   renderCursor: defaultCursorRenderer,
   yDoc: void 0,
-  color: void 0
+  color: void 0,
+  shouldChangeUserCursor: void 0
 };
+const symbols = /[\r\n%#()<>?[\\\]^`{|}]/g;
+function encodeSVG(svgData) {
+  svgData = svgData.replace(/"/g, `'`);
+  svgData = svgData.replace(/>\s{1,}</g, `><`);
+  svgData = svgData.replace(/\s{2,}/g, ` `);
+  return svgData.replace(symbols, encodeURIComponent);
+}
 const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + window.location.pathname}`, config = {}) => {
   const {
     triggerKey,
@@ -10012,7 +10025,8 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
     userMetaData,
     renderCursor,
     color,
-    yDoc
+    yDoc,
+    shouldChangeUserCursor
   } = __spreadValues(__spreadValues({}, DefaultConfig), config);
   const cursorDiv = document.getElementById(cursorDivId);
   const chatDiv = document.getElementById(chatDivId);
@@ -10037,6 +10051,10 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
   }
   const others = doc2.getMap("state");
   let sendUpdate = false;
+  if (shouldChangeUserCursor) {
+    const userCursorSvgEncoded = encodeSVG(getSvgForCursor(me.color));
+    document.documentElement.style.cursor = `url("data:image/svg+xml,${userCursorSvgEncoded}"), auto`;
+  }
   const cleanup = () => {
     others.delete(me.id);
     provider == null ? void 0 : provider.destroy();
