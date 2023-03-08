@@ -10047,7 +10047,13 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
     doc2 = yDoc;
   } else {
     doc2 = new Doc();
-    provider = new WebrtcProvider(room_id, doc2);
+    provider = new WebrtcProvider(room_id, doc2, {
+      signaling: [
+        "wss://signalling.communities.digital",
+        "wss://signaling.yjs.dev",
+        "wss://y-webrtc-signaling-eu.herokuapp.com"
+      ]
+    });
   }
   const others = doc2.getMap("state");
   let sendUpdate = false;

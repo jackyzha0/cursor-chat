@@ -44,9 +44,8 @@ function getSvgForCursor(color: string) {
 export function defaultCursorRenderer<T>(cursor: Cursor<T>): HTMLElement {
   const htmlFragment = `<div id="cursor_${cursor.id}" class="cursor">
     ${getSvgForCursor(cursor.color)}
-    <p id="chat_${cursor.id}" class="chat" style="background-color: ${
-    cursor.color
-  }">${cursor.chat}</p>
+    <p id="chat_${cursor.id}" class="chat" style="background-color: ${cursor.color
+    }">${cursor.chat}</p>
   </div>`;
   const template = document.createElement("template");
   template.innerHTML = htmlFragment;
@@ -132,13 +131,21 @@ export const initCursorChat = <T>(
     doc = new Y.Doc()
     provider = new WebrtcProvider(
       room_id,
-      doc
+      doc,
+      // @ts-ignore
+      {
+        signaling: [
+          "wss://signalling.communities.digital",
+          "wss://signaling.yjs.dev",
+          "wss://y-webrtc-signaling-eu.herokuapp.com",
+        ]
+      }
     )
   }
 
   const others: Y.Map<Cursor<T>> = doc.getMap("state")
   let sendUpdate = false
-  
+
   if (shouldChangeUserCursor) {
     const userCursorSvgEncoded = encodeSVG(
       getSvgForCursor(me.color)
