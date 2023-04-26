@@ -59,12 +59,13 @@ export interface Config<T = any> {
   chatDivId: string;
   userMetaData: UserMetadata<T>;
   renderCursor: <T>(cursor: Cursor<T>) => HTMLElement;
-  yDoc: Y.Doc;
-  color: string;
-  shouldChangeUserCursor: boolean;
+  yDoc?: Y.Doc;
+  color?: string;
+  shouldChangeUserCursor?: boolean;
+  signallingServers: string[];
 }
 
-export const DefaultConfig = {
+export const DefaultConfig: <T>() => Config<T> = () => ({
   triggerKey: "/",
   cursorDivId: "cursor-chat-layer",
   chatDivId: "cursor-chat-box",
@@ -73,14 +74,14 @@ export const DefaultConfig = {
   yDoc: undefined,
   color: undefined,
   shouldChangeUserCursor: undefined,
-};
+  signallingServers: ["wss://signalling.communities.digital"]
+});
 
 // from: https://github.com/yoksel/url-encoder/blob/master/src/js/script.js
 const symbols = /[\r\n%#()<>?[\\\]^`{|}]/g;
 function encodeSVG(svgData: string) {
   // Use single quotes instead of double to avoid encoding.
   svgData = svgData.replace(/"/g, `'`);
-
   svgData = svgData.replace(/>\s{1,}</g, `><`);
   svgData = svgData.replace(/\s{2,}/g, ` `);
 
@@ -102,8 +103,9 @@ export const initCursorChat = <T>(
     color,
     yDoc,
     shouldChangeUserCursor,
+    signallingServers
   } = {
-    ...DefaultConfig,
+    ...DefaultConfig<T>(),
     ...config,
   };
 
@@ -132,13 +134,8 @@ export const initCursorChat = <T>(
     provider = new WebrtcProvider(
       room_id,
       doc,
-      // @ts-ignore
       {
-        signaling: [
-          "wss://signalling.communities.digital",
-          "wss://signaling.yjs.dev",
-          "wss://y-webrtc-signaling-eu.herokuapp.com",
-        ]
+        signaling: signallingServers
       }
     )
   }

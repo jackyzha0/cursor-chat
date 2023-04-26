@@ -17,19 +17,11 @@ export interface Config<T = any> {
     chatDivId: string;
     userMetaData: UserMetadata<T>;
     renderCursor: <T>(cursor: Cursor<T>) => HTMLElement;
-    yDoc: Y.Doc;
-    color: string;
-    shouldChangeUserCursor: boolean;
+    yDoc?: Y.Doc;
+    color?: string;
+    shouldChangeUserCursor?: boolean;
+    signallingServers: string[];
 }
-export declare const DefaultConfig: {
-    triggerKey: string;
-    cursorDivId: string;
-    chatDivId: string;
-    userMetaData: {};
-    renderCursor: typeof defaultCursorRenderer;
-    yDoc: undefined;
-    color: undefined;
-    shouldChangeUserCursor: undefined;
-};
+export declare const DefaultConfig: <T>() => Config<T>;
 export declare const initCursorChat: <T>(room_id?: string, config?: Partial<Config<T>>) => () => void;
 export {};

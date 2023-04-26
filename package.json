@@ -1,6 +1,6 @@
 {
   "name": "cursor-chat",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "license": "MIT",
   "files": [
     "dist"
@@ -31,7 +31,7 @@
     "nanoid": "^3.3.1",
     "perfect-cursors": "^1.0.5",
     "randomcolor": "^0.6.2",
-    "y-webrtc": "^10.2.3",
+    "y-webrtc": "^10.2.5",
     "yjs": "^13.5.44"
   }
 }

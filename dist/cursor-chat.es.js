@@ -9241,7 +9241,7 @@ class SignalingConn extends WebsocketClient {
 }
 class WebrtcProvider extends Observable {
   constructor(roomName, doc2, {
-    signaling = ["wss://signaling.yjs.dev", "wss://y-webrtc-signaling-eu.herokuapp.com", "wss://y-webrtc-signaling-us.herokuapp.com"],
+    signaling = ["wss://y-webrtc-eu.fly.dev"],
     password = null,
     awareness = new Awareness(doc2),
     maxConns = 20 + floor(rand() * 15),
@@ -10000,7 +10000,7 @@ function defaultCursorRenderer(cursor) {
   const cursorEl = template.content.firstChild;
   return cursorEl;
 }
-const DefaultConfig = {
+const DefaultConfig = () => ({
   triggerKey: "/",
   cursorDivId: "cursor-chat-layer",
   chatDivId: "cursor-chat-box",
@@ -10008,8 +10008,9 @@ const DefaultConfig = {
   renderCursor: defaultCursorRenderer,
   yDoc: void 0,
   color: void 0,
-  shouldChangeUserCursor: void 0
-};
+  shouldChangeUserCursor: void 0,
+  signallingServers: ["wss://signalling.communities.digital"]
+});
 const symbols = /[\r\n%#()<>?[\\\]^`{|}]/g;
 function encodeSVG(svgData) {
   svgData = svgData.replace(/"/g, `'`);
@@ -10026,8 +10027,9 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
     renderCursor,
     color,
     yDoc,
-    shouldChangeUserCursor
-  } = __spreadValues(__spreadValues({}, DefaultConfig), config);
+    shouldChangeUserCursor,
+    signallingServers
+  } = __spreadValues(__spreadValues({}, DefaultConfig()), config);
   const cursorDiv = document.getElementById(cursorDivId);
   const chatDiv = document.getElementById(chatDivId);
   if (!cursorDiv || !chatDiv) {
@@ -10048,11 +10050,7 @@ const initCursorChat = (room_id = `cursor-chat-room-${window.location.host + win
   } else {
     doc2 = new Doc();
     provider = new WebrtcProvider(room_id, doc2, {
-      signaling: [
-        "wss://signalling.communities.digital",
-        "wss://signaling.yjs.dev",
-        "wss://y-webrtc-signaling-eu.herokuapp.com"
-      ]
+      signaling: signallingServers
     });
   }
   const others = doc2.getMap("state");
