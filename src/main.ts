@@ -20,7 +20,7 @@ interface Cursor<T> {
 function getSvgForCursor(color: string) {
   return `<svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="13 9 35 35"
+      viewBox="10 9 34 34"
       width="36"
       height="36"
       fill="none"
@@ -161,7 +161,7 @@ export const initCursorChat = <T>(
       others.set(me.id, me)
       sendUpdate = false
     }
-  }, 80)
+  }, 50)
 
 
   document.onmousemove = (evt) => {
@@ -224,6 +224,7 @@ export const initCursorChat = <T>(
             } else {
               updated_chat_div.classList.add("show")
             }
+
             updated_chat_div.innerText = updated_cursor.chat
             updated_cursor_div.classList.remove("new")
             cursor_interp.get(cursor_id)!.addPoint([updated_cursor.x, updated_cursor.y]);
